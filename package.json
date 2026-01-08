@@ -4,11 +4,11 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"stellar scaffold watch --build-clients\" \"vite\"",
-    "start": "concurrently \"stellar scaffold watch --build-clients\" \"vite\"",
-    "prebuild": "(command -v stellar >/dev/null 2>&1 && stellar scaffold build --build-clients) || echo 'Warning: stellar scaffold not available, using committed contracts'",
+    "dev": "vite",
+    "start": "vite",
+    "prebuild": "echo 'Building OrbitWork...'",
     "build": "tsc -b && vite build",
-    "install:contracts": "npm install --workspace=packages && npm run build --workspace=packages",
+    "install:contracts": "echo 'Skipping contract install'",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier . --write"

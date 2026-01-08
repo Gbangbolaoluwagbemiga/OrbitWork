@@ -1,14 +1,14 @@
 {
   "name": "OrbitWork - Trustless Escrow",
   "short_name": "OrbitWork",
-  "description": "Trustless payments with transparent milestones powered by Stellar",
+  "description": "Trustless payments with transparent milestones powered by Casper Network",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#6366f1",
   "icons": [
     {
-      "src": "/secureflow-logo.svg",
+      "src": "/orbitwork-logo.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     },

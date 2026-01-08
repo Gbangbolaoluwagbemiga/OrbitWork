@@ -2,9 +2,9 @@
 
 <div align="center">
 
-**A decentralized freelancer marketplace built on Stellar (Soroban) that provides secure, trustless escrow services for freelance work agreements.**
+**A decentralized freelancer marketplace built on Casper that provides secure, trustless escrow services for freelance work agreements.**
 
-[![Stellar](https://img.shields.io/badge/Stellar-Soroban-7D00FF?style=flat-square&logo=stellar)](https://stellar.org)
+[![Casper](https://img.shields.io/badge/Casper-Network-FF0000?style=flat-square&logo=casper)](https://casper.network)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Rust](https://img.shields.io/badge/Rust-000000?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org/)
@@ -31,13 +31,13 @@
 
 ## 🎯 Overview
 
-OrbitWork is a blockchain-powered freelancer marketplace that revolutionizes how clients and freelancers collaborate. Built on the Stellar network using Soroban smart contracts, OrbitWork ensures secure payments, transparent milestone tracking, and fair dispute resolution—all without requiring trust between parties.
+OrbitWork is a blockchain-powered freelancer marketplace that revolutionizes how clients and freelancers collaborate. Built on the Casper network using Rust smart contracts, OrbitWork ensures secure payments, transparent milestone tracking, and fair dispute resolution—all without requiring trust between parties.
 
 ### Why OrbitWork?
 
 - **🔒 Trustless Escrow**: Funds are locked in smart contracts until work is approved
-- **⚡ Fast & Low-Cost**: Leverages Stellar's fast, low-fee network
-- **🌍 Global Access**: Works with native XLM and whitelisted tokens
+- **⚡ Fast & Low-Cost**: Leverages Casper's fast, low-fee network
+- **🌍 Global Access**: Works with native CSPR and whitelisted tokens
 - **⚖️ Fair Disputes**: Multi-arbiter system ensures fair conflict resolution
 - **📊 On-Chain Reputation**: Build trust through verifiable, on-chain reputation scores
 
@@ -59,7 +59,7 @@ OrbitWork is a blockchain-powered freelancer marketplace that revolutionizes how
   - **Client Ratings**: Clients can rate freelancers after project completion (1-5 stars with reviews)
   - **Badge Tiers**: Freelancers earn badges (Beginner, Intermediate, Advanced, Expert) based on completed projects
   - **Average Ratings**: Display average ratings and review counts for freelancers
-- 💎 **Multi-Token Support**: Use native XLM or any whitelisted token
+- 💎 **Multi-Token Support**: Use native CSPR or any whitelisted token
 - ⏰ **Deadline Management**: Flexible deadlines with extension capabilities
 - 🛡️ **Admin Controls**: Platform management with pause/unpause capabilities
 - 🔄 **Milestone Resubmission**: Freelancers can resubmit rejected milestones with improvements
@@ -95,7 +95,7 @@ Clients can create jobs in two ways:
 
 **What happens:**
 
-- Client deposits funds (XLM or whitelisted token) into the escrow contract
+- Client deposits funds (CSPR or whitelisted token) into the escrow contract
 - Sets up milestones with amounts and descriptions
 - Defines project details (title, description, deadline)
 
@@ -143,7 +143,7 @@ If a disagreement occurs (e.g., client refuses to approve valid work, or freelan
 
 The project consists of two main components:
 
-1.  **Smart Contracts (Soroban)**: Written in Rust, handling all logic, state, and funds.
+1.  **Smart Contracts (Casper)**: Written in Rust, handling all logic, state, and funds.
 2.  **Frontend (React)**: A modern web interface for interacting with the contracts.
 
 ### Smart Contract Modules
@@ -157,7 +157,7 @@ The project consists of two main components:
 ### Frontend
 
 - **Framework**: React + Vite
-- **Wallet Connection**: Freighter (via `@stellar/freelancer-wallet-sdk`)
+- **Wallet Connection**: Casper Wallet / CasperDash
 - **Styling**: Tailwind CSS + shadcn/ui
 - **State Management**: React Query + Context API
 
@@ -165,12 +165,12 @@ The project consists of two main components:
 
 ## 🛠️ Tech Stack
 
-- **Blockchain**: Stellar Network (Soroban)
+- **Blockchain**: Casper Network
 - **Smart Contracts**: Rust
 - **Frontend**: React, TypeScript, Vite
 - **Styling**: Tailwind CSS
-- **Wallet**: Freighter
-- **Testing**: Soroban Test Framework
+- **Wallet**: Casper Wallet
+- **Testing**: Casper Test Framework
 
 ---
 
@@ -180,8 +180,8 @@ The project consists of two main components:
 
 - [Node.js](https://nodejs.org/) (v18+)
 - [Rust](https://www.rust-lang.org/tools/install)
-- [Soroban CLI](https://soroban.stellar.org/docs/getting-started/setup)
-- [Freighter Wallet](https://www.freighter.app/) extension
+- [Casper Client](https://docs.casper.network/developers/cli/installing-casper-client/)
+- [Casper Wallet](https://www.casperwallet.io/) extension
 
 ### Installation
 
@@ -197,70 +197,3 @@ The project consists of two main components:
     ```bash
     npm install
     ```
-
-3.  **Setup environment variables**
-
-    ```bash
-    cp .env.example .env
-    ```
-
-4.  **Run the development server**
-
-    ```bash
-    npm run dev
-    ```
-
----
-
-## 📖 Usage Guide
-
-1.  **Connect Wallet**: Click "Connect Wallet" and approve via Freighter.
-2.  **Get Test Funds**: Use the "Fund Account" button (on Testnet) to get XLM.
-3.  **Create Job**: Go to "Create Job", fill in details, and deposit funds.
-4.  **Apply (Freelancer)**: Switch to a freelancer account, view jobs, and apply.
-5.  **Manage**: Use the dashboard to track progress, approve milestones, or raise disputes.
-
----
-
-## 📜 Smart Contract Details
-
-| Contract | Description |
-| :--- | :--- |
-| `Escrow` | Manages funds, milestones, and state |
-| `Marketplace` | Handles job listings and applications |
-| `Reputation` | Stores ratings and user stats |
-
----
-
-## 📂 Project Structure
-
-```
-orbitwork/
-├── contracts/          # Soroban smart contracts (Rust)
-├── src/                # Frontend source code
-│   ├── components/     # React components
-│   ├── contexts/       # React contexts (Wallet, etc.)
-│   ├── hooks/          # Custom hooks
-│   ├── lib/            # Utilities and helpers
-│   └── pages/          # Application pages
-├── public/             # Static assets
-└── ...
-```
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1.  Fork the project
-2.  Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4.  Push to the branch (`git push origin feature/AmazingFeature`)
-5.  Open a Pull Request
-
----
-
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for more information.

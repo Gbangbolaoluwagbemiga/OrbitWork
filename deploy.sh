@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# SecureFlow Contract Deployment Script
-# This script deploys the updated contract with rating and badge system
+# OrbitWork Contract Deployment Script
+# This script deploys the OrbitWork contract to the Casper Network
 
 set -e
 
-echo "🚀 SecureFlow Contract Deployment"
+echo "🚀 OrbitWork Contract Deployment"
 echo "================================"
 echo ""
 
@@ -16,37 +16,49 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Check if WASM file exists
-WASM_FILE="target/wasm32-unknown-unknown/release/secureflow.wasm"
+WASM_FILE="casper_contracts/secureflow/target/wasm32-unknown-unknown/release/orbitwork.wasm"
 if [ ! -f "$WASM_FILE" ]; then
-    echo -e "${RED}❌ WASM file not found. Building contract...${NC}"
-    cargo build --target wasm32-unknown-unknown --release
+    echo -e "${YELLOW}⚠️  WASM file not found at $WASM_FILE${NC}"
+    echo -e "${YELLOW}Attempting to build...${NC}"
+    cd casper_contracts/secureflow
+    cargo +nightly-2023-06-01 build --release --target wasm32-unknown-unknown -p orbitwork
+    cd ../..
+    
+    if [ ! -f "$WASM_FILE" ]; then
+        echo -e "${RED}❌ Build failed or WASM still not found.${NC}"
+        exit 1
+    fi
 fi
 
-echo -e "${GREEN}✅ Contract built successfully${NC}"
+echo -e "${GREEN}✅ Contract binary found${NC}"
 echo ""
 
-# Check for Soroban CLI
-if ! command -v soroban &> /dev/null; then
-    echo -e "${RED}❌ Soroban CLI not found. Please install it first.${NC}"
-    echo "Install from: https://soroban.stellar.org/docs/getting-started/setup"
+# Check for Casper Client
+if ! command -v casper-client &> /dev/null; then
+    echo -e "${RED}❌ casper-client not found. Please install it first.${NC}"
+    echo "Visit: https://docs.casper.network/developers/prerequisites/installing-casper-client/"
     exit 1
 fi
 
-# Get network (default to testnet)
-NETWORK=${1:-testnet}
-echo -e "${YELLOW}📡 Deploying to: ${NETWORK}${NC}"
+# Get chain name (default to casper-test)
+CHAIN_NAME=${1:-casper-test}
+NODE_ADDRESS=${2:-https://node.testnet.casper.network}
+
+echo -e "${YELLOW}📡 Deploying to: ${CHAIN_NAME} (${NODE_ADDRESS})${NC}"
 echo ""
 
-# Check if source account is provided
-if [ -z "$2" ]; then
-    echo -e "${YELLOW}⚠️  No source account provided.${NC}"
-    echo "Usage: ./deploy.sh [network] [source-account]"
-    echo "Example: ./deploy.sh testnet GABCDEF..."
-    echo ""
-    echo "Please provide your Stellar account public key:"
-    read -p "Source Account: " SOURCE_ACCOUNT
-else
-    SOURCE_ACCOUNT=$2
+# Check for secret key
+SECRET_KEY_PATH="secret_key_sec1.pem"
+if [ ! -f "$SECRET_KEY_PATH" ]; then
+    echo -e "${YELLOW}⚠️  Secret key not found at $SECRET_KEY_PATH${NC}"
+    echo "Please provide the path to your secret key (e.g., /path/to/secret_key.pem):"
+    read -p "Secret Key Path: " USER_KEY_PATH
+    SECRET_KEY_PATH=$USER_KEY_PATH
+fi
+
+if [ ! -f "$SECRET_KEY_PATH" ]; then
+    echo -e "${RED}❌ Secret key file not found.${NC}"
+    exit 1
 fi
 
 echo ""
@@ -54,39 +66,13 @@ echo -e "${YELLOW}📦 Deploying contract...${NC}"
 echo ""
 
 # Deploy contract
-DEPLOY_OUTPUT=$(soroban contract deploy \
-    --wasm "$WASM_FILE" \
-    --source "$SOURCE_ACCOUNT" \
-    --network "$NETWORK" 2>&1)
-
-# Extract contract ID from output
-CONTRACT_ID=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Contract ID: \K[^[:space:]]+' || echo "")
-
-if [ -z "$CONTRACT_ID" ]; then
-    echo -e "${RED}❌ Deployment failed or contract ID not found${NC}"
-    echo "Output:"
-    echo "$DEPLOY_OUTPUT"
-    exit 1
-fi
-
-echo -e "${GREEN}✅ Contract deployed successfully!${NC}"
-echo ""
-echo -e "${GREEN}📝 Contract ID: ${CONTRACT_ID}${NC}"
-echo ""
-
-# Save contract ID to file
-echo "$CONTRACT_ID" > .contract-id
-echo "Contract ID saved to .contract-id"
+casper-client put-deploy \
+    --node-address "$NODE_ADDRESS" \
+    --chain-name "$CHAIN_NAME" \
+    --secret-key "$SECRET_KEY_PATH" \
+    --payment-amount 200000000000 \
+    --session-path "$WASM_FILE"
 
 echo ""
-echo -e "${YELLOW}📋 Next Steps:${NC}"
-echo "1. Update your .env file with:"
-echo "   VITE_SECUREFLOW_CONTRACT_ID=$CONTRACT_ID"
-echo ""
-echo "2. Or update src/lib/web3/stellar-config.ts with:"
-echo "   DEFAULT_CONTRACT_ID=\"$CONTRACT_ID\""
-echo ""
-echo "3. Rebuild frontend:"
-echo "   npm run build"
-echo ""
-echo -e "${GREEN}✨ Deployment complete!${NC}"
+echo -e "${GREEN}✅ Deployment transaction sent!${NC}"
+echo "Check the explorer for status."

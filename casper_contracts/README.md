@@ -1,6 +1,6 @@
-# SecureFlow - Casper Contracts
+# OrbitWork - Casper Contracts
 
-This directory contains the port of the SecureFlow smart contracts for the Casper Network.
+This directory contains the OrbitWork smart contracts for the Casper Network.
 
 ## Structure
 
@@ -15,7 +15,8 @@ This directory contains the port of the SecureFlow smart contracts for the Caspe
 To build the contract:
 
 ```bash
-make build-contract
+cd secureflow
+cargo +nightly-2023-06-01 build --release --target wasm32-unknown-unknown -p orbitwork
 ```
 
 ## Next Steps
