@@ -11,6 +11,7 @@ import { NotificationProvider as SecureFlowNotificationProvider } from "./contex
 import { ThemeProvider } from "./components/theme-provider";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { CasperProvider } from "./contexts/casper-context";
 
 const queryClient = new QueryClient({
   defaultOptions: {
