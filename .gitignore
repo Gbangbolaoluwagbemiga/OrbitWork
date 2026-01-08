@@ -35,6 +35,12 @@ lerna-debug.log*
 .env.*
 !.env.template
 
+# Private Keys and Secrets
+*.pem
+secret_key*
+**/secret_key*
+**/*.pem
+
 # easy way to create temporary local-only files and folders
 *.local.*
 *.local
@@ -98,14 +104,3 @@ coverage/
 .temp/
 .tmp/
 *.tmp
-*.bak
-*.backup
-
-# Migration and temporary docs
-MIGRATION_SUMMARY.md
-STELLAR_INTEGRATION.md
-STELLAR_UPDATE_SUMMARY.md
-
-# Empty directories
-src/images/
-contracts/src/

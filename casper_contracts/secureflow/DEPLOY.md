@@ -1,4 +1,4 @@
-# Deploying SecureFlow to Casper Testnet
+# Deploying OrbitWork to Casper Testnet
 
 ## Prerequisites
 1. Rust and Cargo installed.
@@ -19,7 +19,7 @@ casper-client put-deploy \
     --chain-name casper-test \
     --secret-key /path/to/secret_key.pem \
     --payment-amount 100000000000 \
-    --session-path target/wasm32-unknown-unknown/release/secureflow.wasm
+    --session-path target/wasm32-unknown-unknown/release/orbitwork.wasm
 ```
 
 ## Get Contract Hash

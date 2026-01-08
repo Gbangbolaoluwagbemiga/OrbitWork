@@ -7,12 +7,13 @@ pub mod error;
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use alloc::boxed::Box;
 use casper_contract::{
-    contract_api::{runtime, storage, system},
+    contract_api::{runtime, storage},
     unwrap_or_revert::UnwrapOrRevert,
 };
 use casper_types::{
-    runtime_args, CLValue, Key, RuntimeArgs, U256, URef,
+    runtime_args, Key, RuntimeArgs, U256, URef,
 };
 use data::{Application, Escrow, EscrowStatus, Milestone, MilestoneStatus};
 use error::OrbitWorkError;
@@ -22,6 +23,7 @@ const KEY_ADMIN: &str = "admin";
 const KEY_NEXT_ESCROW_ID: &str = "next_escrow_id";
 const DICT_ESCROWS: &str = "escrows";
 const DICT_APPLICATIONS: &str = "applications";
+const DICT_TOKEN_WHITELIST: &str = "token_whitelist";
 
 #[no_mangle]
 pub extern "C" fn init() {
@@ -35,6 +37,25 @@ pub extern "C" fn init() {
     // Initialize dictionaries
     storage::new_dictionary(DICT_ESCROWS).unwrap_or_revert();
     storage::new_dictionary(DICT_APPLICATIONS).unwrap_or_revert();
+    storage::new_dictionary(DICT_TOKEN_WHITELIST).unwrap_or_revert();
+}
+
+#[no_mangle]
+pub extern "C" fn whitelist_token() {
+    let admin_key = runtime::get_key(KEY_ADMIN).unwrap_or_revert();
+    
+    if Key::from(runtime::get_caller()) != admin_key {
+        runtime::revert(OrbitWorkError::NotAuthorized);
+    }
+
+    let token: Key = runtime::get_named_arg("token");
+    
+    let whitelist_dict = runtime::get_key(DICT_TOKEN_WHITELIST)
+        .unwrap_or_revert()
+        .into_uref()
+        .unwrap_or_revert();
+        
+    storage::dictionary_put(whitelist_dict, &token.to_string(), true);
 }
 
 #[no_mangle]
@@ -46,6 +67,22 @@ pub extern "C" fn create_escrow() {
     let duration: u64 = runtime::get_named_arg("duration");
     let milestones_amounts: Vec<U256> = runtime::get_named_arg("milestone_amounts");
     let milestones_descs: Vec<String> = runtime::get_named_arg("milestone_descriptions");
+    let token: Option<Key> = runtime::get_named_arg("token");
+
+    if let Some(token_key) = token {
+        let whitelist_dict = runtime::get_key(DICT_TOKEN_WHITELIST)
+            .unwrap_or_revert()
+            .into_uref()
+            .unwrap_or_revert();
+        
+        let is_whitelisted: bool = storage::dictionary_get(whitelist_dict, &token_key.to_string())
+            .unwrap_or_revert()
+            .unwrap_or(false);
+            
+        if !is_whitelisted {
+            runtime::revert(OrbitWorkError::TokenNotWhitelisted);
+        }
+    }
 
     // Basic validation
     if milestones_amounts.len() != milestones_descs.len() {
@@ -81,7 +118,7 @@ pub extern "C" fn create_escrow() {
         arbiters: Vec::new(), // To be added
         required_confirmations: 1,
         milestones,
-        token: None, // Assuming CSPR for now
+        token,
         total_amount,
         platform_fee: U256::zero(),
         status: EscrowStatus::Pending,
@@ -140,45 +177,53 @@ pub extern "C" fn apply_to_job() {
 
 #[no_mangle]
 pub extern "C" fn call() {
-    use casper_contract::contract_api::storage;
-    use casper_types::{EntryPoints, EntryPoint, EntryPointAccess, EntryPointType, Parameter, CLType};
+    use casper_types::{EntryPoints, EntryPoint, EntryPointAccess, EntryPointType, CLType, Parameter};
 
     let mut entry_points = EntryPoints::new();
 
     entry_points.add_entry_point(EntryPoint::new(
-        "init",
-        vec![Parameter::new("admin", CLType::Key)],
+                "init",
+                alloc::vec![Parameter::new("admin", CLType::Key)],
+                CLType::Unit,
+                EntryPointAccess::Public,
+                EntryPointType::Contract,
+            ));
+
+    entry_points.add_entry_point(EntryPoint::new(
+        "whitelist_token",
+        alloc::vec![Parameter::new("token", CLType::Key)],
         CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
     ));
 
-    entry_points.add_entry_point(EntryPoint::new(
-        "create_escrow",
-        vec![
-            Parameter::new("project_title", CLType::String),
-            Parameter::new("project_description", CLType::String),
-            Parameter::new("total_amount", CLType::U256),
-            Parameter::new("duration", CLType::U64),
-            Parameter::new("milestone_amounts", CLType::List(Box::new(CLType::U256))),
-            Parameter::new("milestone_descriptions", CLType::List(Box::new(CLType::String))),
-        ],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
+            entry_points.add_entry_point(EntryPoint::new(
+                "create_escrow",
+                alloc::vec![
+                    Parameter::new("project_title", CLType::String),
+                    Parameter::new("project_description", CLType::String),
+                    Parameter::new("total_amount", CLType::U256),
+                    Parameter::new("duration", CLType::U64),
+                    Parameter::new("milestone_amounts", CLType::List(Box::new(CLType::U256))),
+                    Parameter::new("milestone_descriptions", CLType::List(Box::new(CLType::String))),
+                    Parameter::new("token", CLType::Option(Box::new(CLType::Key))),
+                ],
+                CLType::Unit,
+                EntryPointAccess::Public,
+                EntryPointType::Contract,
+            ));
 
-    entry_points.add_entry_point(EntryPoint::new(
-        "apply_to_job",
-        vec![
-            Parameter::new("escrow_id", CLType::U32),
-            Parameter::new("cover_letter", CLType::String),
-            Parameter::new("proposed_timeline", CLType::U32),
-        ],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Contract,
-    ));
+            entry_points.add_entry_point(EntryPoint::new(
+                "apply_to_job",
+                alloc::vec![
+                    Parameter::new("escrow_id", CLType::U32),
+                    Parameter::new("cover_letter", CLType::String),
+                    Parameter::new("proposed_timeline", CLType::U32),
+                ],
+                CLType::Unit,
+                EntryPointAccess::Public,
+                EntryPointType::Contract,
+            ));
 
     let (contract_hash, _version) = storage::new_contract(
         entry_points,

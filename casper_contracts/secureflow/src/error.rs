@@ -8,6 +8,7 @@ pub enum OrbitWorkError {
     InvalidState = 2,
     MilestoneCountMismatch = 3,
     NotOpenJob = 4,
+    TokenNotWhitelisted = 5,
 }
 
 impl From<OrbitWorkError> for ApiError {

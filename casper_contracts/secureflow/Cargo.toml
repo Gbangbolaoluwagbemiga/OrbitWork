@@ -1,15 +1,14 @@
 [package]
-name = "secureflow-casper"
+name = "orbitwork"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-casper-contract = "1.4.4"
-casper-types = "1.5.0"
-alloc = { version = "0.0.0", package = "rustc-std-workspace-alloc" }
+casper-contract = "3.0.0"
+casper-types = "3.0.0"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [profile.release]
 lto = true
