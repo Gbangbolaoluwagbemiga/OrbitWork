@@ -11,6 +11,48 @@ import { DayButton, DayPicker, getDefaultClassNames } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 
+function CalendarRoot({ className, rootRef, ...props }: any) {
+  return (
+    <div
+      data-slot="calendar"
+      ref={rootRef}
+      className={cn(className)}
+      {...props}
+    />
+  )
+}
+
+function CalendarChevron({ className, orientation, ...props }: any) {
+  if (orientation === 'left') {
+    return (
+      <ChevronLeftIcon className={cn('size-4', className)} {...props} />
+    )
+  }
+
+  if (orientation === 'right') {
+    return (
+      <ChevronRightIcon
+        className={cn('size-4', className)}
+        {...props}
+      />
+    )
+  }
+
+  return (
+    <ChevronDownIcon className={cn('size-4', className)} {...props} />
+  )
+}
+
+function CalendarWeekNumber({ children, ...props }: any) {
+  return (
+    <td {...props}>
+      <div className="flex size-(--cell-size) items-center justify-center text-center">
+        {children}
+      </div>
+    </td>
+  )
+}
+
 function Calendar({
   className,
   classNames,
@@ -80,8 +122,8 @@ function Calendar({
         caption_label: cn(
           'select-none font-medium',
           captionLayout === 'label'
-            ? 'text-sm'
-            : 'rounded-md pl-2 pr-1 flex items-center gap-1 text-sm h-8 [&>svg]:text-muted-foreground [&>svg]:size-3.5',
+          ? 'text-sm'
+          : 'rounded-md pl-2 pr-1 flex items-center gap-1 text-sm h-8 [&>svg]:text-muted-foreground [&>svg]:size-3.5',
           defaultClassNames.caption_label,
         ),
         table: 'w-full border-collapse',
@@ -102,7 +144,7 @@ function Calendar({
         day: cn(
           'relative w-full h-full p-0 text-center [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md group/day aspect-square select-none',
           defaultClassNames.day,
-        ),
+          ),
         range_start: cn(
           'rounded-l-md bg-accent',
           defaultClassNames.range_start,
@@ -125,46 +167,10 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Root: ({ className, rootRef, ...props }) => {
-          return (
-            <div
-              data-slot="calendar"
-              ref={rootRef}
-              className={cn(className)}
-              {...props}
-            />
-          )
-        },
-        Chevron: ({ className, orientation, ...props }) => {
-          if (orientation === 'left') {
-            return (
-              <ChevronLeftIcon className={cn('size-4', className)} {...props} />
-            )
-          }
-
-          if (orientation === 'right') {
-            return (
-              <ChevronRightIcon
-                className={cn('size-4', className)}
-                {...props}
-              />
-            )
-          }
-
-          return (
-            <ChevronDownIcon className={cn('size-4', className)} {...props} />
-          )
-        },
+        Root: CalendarRoot,
+        Chevron: CalendarChevron,
         DayButton: CalendarDayButton,
-        WeekNumber: ({ children, ...props }) => {
-          return (
-            <td {...props}>
-              <div className="flex size-(--cell-size) items-center justify-center text-center">
-                {children}
-              </div>
-            </td>
-          )
-        },
+        WeekNumber: CalendarWeekNumber,
         ...components,
       }}
       {...props}
@@ -200,9 +206,21 @@ function CalendarDayButton({
       data-range-start={modifiers.range_start}
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
+      data-today={day.date.toDateString() === new Date().toDateString()}
+      data-outside={modifiers.outside}
+      data-disabled={modifiers.disabled}
+      data-hidden={modifiers.hidden}
       className={cn(
-        'data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 dark:hover:text-accent-foreground flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70',
-        defaultClassNames.day,
+        'size-(--cell-size) shrink-0 p-0 rounded-md font-normal text-foreground aria-selected:opacity-100 relative z-10',
+        'outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:border-ring',
+        '[&[data-outside=true]]:text-muted-foreground [&[data-outside=true]]:z-0',
+        '[&[data-disabled=true]]:text-muted-foreground [&[data-disabled=true]]:opacity-50',
+        '[&[data-selected-single=true]]:bg-primary [&[data-selected-single=true]]:text-primary-foreground [&[data-selected-single=true]]:hover:bg-primary [&[data-selected-single=true]]:focus-visible:bg-primary',
+        '[&[data-range-start=true]]:bg-accent [&[data-range-start=true]]:text-accent-foreground [&[data-range-start=true]]:rounded-l-md [&[data-range-start=true]]:hover:bg-accent [&[data-range-start=true]]:focus-visible:bg-accent',
+        '[&[data-range-end=true]]:bg-accent [&[data-range-end=true]]:text-accent-foreground [&[data-range-end=true]]:rounded-r-md [&[data-range-end=true]]:hover:bg-accent [&[data-range-end=true]]:focus-visible:bg-accent',
+        '[&[data-range-middle=true]]:bg-accent [&[data-range-middle=true]]:text-accent-foreground [&[data-range-middle=true]]:rounded-none [&[data-range-middle=true]]:hover:bg-accent [&[data-range-middle=true]]:focus-visible:bg-accent',
+        '[&[data-today=true]]:bg-accent [&[data-today=true]]:text-accent-foreground',
+        defaultClassNames.day_button,
         className,
       )}
       {...props}
@@ -210,4 +228,4 @@ function CalendarDayButton({
   )
 }
 
-export { Calendar, CalendarDayButton }
+export { Calendar }

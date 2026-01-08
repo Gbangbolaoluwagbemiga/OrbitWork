@@ -115,10 +115,10 @@ export default function FreelancerPage() {
     null
   );
   const [submittedMilestones, setSubmittedMilestones] = useState<Set<string>>(
-    new Set()
+    () => new Set()
   );
   const [approvedMilestones, setApprovedMilestones] = useState<Set<string>>(
-    new Set()
+    () => new Set()
   );
   const [selectedEscrowId, setSelectedEscrowId] = useState<string | null>(null);
   const [selectedMilestoneIndex, setSelectedMilestoneIndex] = useState<

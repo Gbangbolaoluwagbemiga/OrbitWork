@@ -1,6 +1,6 @@
 {
-  "name": "SecureFlow - Trustless Escrow on Stellar",
-  "short_name": "SecureFlow",
+  "name": "OrbitWork - Trustless Escrow",
+  "short_name": "OrbitWork",
   "description": "Trustless payments with transparent milestones powered by Stellar",
   "start_url": "/",
   "display": "standalone",

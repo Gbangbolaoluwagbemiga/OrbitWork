@@ -1,4 +1,4 @@
-use casper_types::{account::AccountHash, bytesrepr::{self, FromBytes, ToBytes}, CLTyped, Key, U256};
+use casper_types::{account::AccountHash, bytesrepr, Key, U256};
 use alloc::string::String;
 use alloc::vec::Vec;
 
