@@ -1,5 +1,5 @@
 [workspace]
-members = ["contracts/*"]
+members = ["casper_contracts/secureflow"]
 resolver = "2"
 
 [workspace.package]
@@ -55,7 +55,6 @@ debug-assertions = false
 codegen-units = 1
 panic = "abort"
 overflow-checks = true
-strip = true
 
 [profile.release-with-logs]
 debug-assertions = true
