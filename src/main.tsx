@@ -26,17 +26,19 @@ createRoot(document.getElementById("root") as HTMLElement).render(
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <StellarNotificationProvider>
         <QueryClientProvider client={queryClient}>
-          <WalletProvider>
-            <Web3Provider>
-              <DelegationProvider>
-                <SecureFlowNotificationProvider>
-                  <BrowserRouter>
-                    <App />
-                  </BrowserRouter>
-                </SecureFlowNotificationProvider>
-              </DelegationProvider>
-            </Web3Provider>
-          </WalletProvider>
+          <CasperProvider>
+            <WalletProvider>
+              <Web3Provider>
+                <DelegationProvider>
+                  <SecureFlowNotificationProvider>
+                    <BrowserRouter>
+                      <App />
+                    </BrowserRouter>
+                  </SecureFlowNotificationProvider>
+                </DelegationProvider>
+              </Web3Provider>
+            </WalletProvider>
+          </CasperProvider>
         </QueryClientProvider>
       </StellarNotificationProvider>
     </ThemeProvider>
