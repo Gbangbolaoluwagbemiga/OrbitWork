@@ -507,7 +507,6 @@ export default function JobsPage() {
         });
         setApplying(false);
         return;
-      } else {
       }
 
       // Call the smart contract applyToJob function

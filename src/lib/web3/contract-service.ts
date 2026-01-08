@@ -236,8 +236,6 @@ export class ContractService {
                       return scVal._value;
                     } else if (scVal.value !== undefined) {
                       return scVal.value;
-                    } else if (scVal._arm && scVal._value !== undefined) {
-                      return scVal._value;
                     }
 
                     // Return as is if we can't extract

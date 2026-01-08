@@ -44,6 +44,7 @@ export default function ApprovalsPage() {
   // Debug selectedFreelancer changes
   useEffect(() => {
     if (selectedFreelancer === null) {
+      // no-op
     }
   }, [selectedFreelancer]);
   const [approving, setApproving] = useState(false);
@@ -425,6 +426,7 @@ export default function ApprovalsPage() {
       {/* Manual Refresh Button */}
       <div className="mb-6 flex justify-end">
         <button
+          type="button"
           onClick={async () => {
             setLoading(true);
             await fetchMyJobs();
@@ -501,6 +503,7 @@ export default function ApprovalsPage() {
                   Review Applications - {selectedJob.projectDescription}
                 </h3>
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedJob(null);
                     setSelectedFreelancer(null);
@@ -613,6 +616,7 @@ export default function ApprovalsPage() {
 
                 <div className="flex gap-3 justify-end">
                   <button
+                    type="button"
                     onClick={() => setSelectedFreelancer(null)}
                     className="px-4 py-2 border rounded-md hover:bg-muted"
                     disabled={approving}
@@ -620,6 +624,7 @@ export default function ApprovalsPage() {
                     Cancel
                   </button>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();

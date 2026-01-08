@@ -6,7 +6,7 @@ import { User, Calendar } from "lucide-react";
 import { BadgeDisplay, RatingDisplay } from "@/components/rating/badge-display";
 import type { Application as ApplicationType } from "@/lib/web3/types";
 
-interface Application extends ApplicationType {}
+type Application = ApplicationType;
 
 interface ApplicationCardProps {
   application: Application;
