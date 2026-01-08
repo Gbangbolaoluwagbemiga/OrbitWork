@@ -1,4 +1,5 @@
-// Stellar Network Configuration
+// Network Configuration
+// Note: Transitioning to Casper Network. These values are legacy Stellar config.
 export const STELLAR_NETWORKS = {
   testnet: {
     networkPassphrase: "Test SDF Network ; September 2015",

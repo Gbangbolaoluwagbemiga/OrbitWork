@@ -57,8 +57,8 @@ export default function HomePage() {
           const status = escrowData.status || 0;
           const totalAmount = Number(escrowData.amount || "0");
 
-          // Add to total volume (convert from stroops to XLM - 7 decimals)
-          totalVolume += totalAmount / 1e7;
+          // Add to total volume (convert from motes to CSPR - 9 decimals)
+          totalVolume += totalAmount / 1e9;
 
           // EscrowStatus enum: Pending=0, InProgress=1, Released=2, Refunded=3, Disputed=4, Expired=5
           if (status === 1) {

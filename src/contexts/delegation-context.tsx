@@ -76,7 +76,7 @@ export function DelegationProvider({ children }: { children: ReactNode }) {
     try {
       // In a real implementation, this would load from the blockchain
       // For now, we'll use localStorage for demo purposes
-      const stored = localStorage.getItem("secureflow_delegations");
+      const stored = localStorage.getItem("orbitwork_delegations");
       if (stored) {
         setDelegations(JSON.parse(stored));
       }
@@ -88,7 +88,7 @@ export function DelegationProvider({ children }: { children: ReactNode }) {
   const saveDelegations = (newDelegations: Delegation[]) => {
     setDelegations(newDelegations);
     localStorage.setItem(
-      "secureflow_delegations",
+      "orbitwork_delegations",
       JSON.stringify(newDelegations),
     );
   };
