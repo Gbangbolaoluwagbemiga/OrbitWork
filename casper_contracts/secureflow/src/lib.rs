@@ -15,7 +15,7 @@ use casper_types::{
     runtime_args, CLValue, Key, RuntimeArgs, U256, URef,
 };
 use data::{Application, Escrow, EscrowStatus, Milestone, MilestoneStatus};
-use error::SecureFlowError;
+use error::OrbitWorkError;
 
 // Storage constants
 const KEY_ADMIN: &str = "admin";
@@ -49,7 +49,7 @@ pub extern "C" fn create_escrow() {
 
     // Basic validation
     if milestones_amounts.len() != milestones_descs.len() {
-        runtime::revert(SecureFlowError::MilestoneCountMismatch);
+        runtime::revert(OrbitWorkError::MilestoneCountMismatch);
     }
 
     // Create milestones
@@ -115,10 +115,10 @@ pub extern "C" fn apply_to_job() {
         .unwrap_or_revert();
     let escrow: Escrow = storage::dictionary_get(escrows_dict, &escrow_id.to_string())
         .unwrap_or_revert()
-        .unwrap_or_revert_with(SecureFlowError::EscrowNotFound);
+        .unwrap_or_revert_with(OrbitWorkError::EscrowNotFound);
 
     if !escrow.is_open_job {
-        runtime::revert(SecureFlowError::NotOpenJob);
+        runtime::revert(OrbitWorkError::NotOpenJob);
     }
 
     // Save Application
@@ -198,5 +198,5 @@ pub extern "C" fn call() {
     );
 
     // Store contract hash
-    runtime::put_key("secureflow_contract", contract_hash.into());
+    runtime::put_key("orbitwork_contract", contract_hash.into());
 }
