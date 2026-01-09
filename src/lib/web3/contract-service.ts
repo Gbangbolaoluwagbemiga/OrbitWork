@@ -1618,25 +1618,57 @@ export class ContractService {
 
   async isJobCreationPaused(_address?: string): Promise<boolean> {
     try {
-      // Use the generated client for view functions - it handles simulation correctly
-      const assembledTx = await this.client.is_job_creation_paused({
-        simulate: true,
-      });
+      // Manual simulation using raw transaction building
+      // This avoids issues with the generated client missing the method
+      const contract = new Contract(this.contractId);
 
-      // For view functions, the result is in the assembledTx.result
-      if (assembledTx.result !== undefined) {
-        return assembledTx.result as boolean;
+      // Use a dummy account for simulation
+      const sourceAddress =
+        "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+      const sourceAccount = {
+        accountId: () => sourceAddress,
+        sequenceNumber: () => "0",
+        incrementSequenceNumber: () => {},
+      } as any;
+
+      // Build transaction for simulation
+      const tx = new TransactionBuilder(sourceAccount, {
+        fee: "100",
+        networkPassphrase: this.network.networkPassphrase,
+      })
+        .addOperation(contract.call("is_job_creation_paused"))
+        .setTimeout(30)
+        .build();
+
+      // Simulate to get the result
+      const simulation = await this.rpcServer.simulateTransaction(tx);
+
+      // Check for errors
+      if ("errorResult" in simulation && simulation.errorResult) {
+        console.warn("Simulation error in isJobCreationPaused:", simulation.errorResult);
+        return false;
       }
 
-      // Fallback: try to get result from simulation
-      if (assembledTx.simulationData) {
-        const simData = assembledTx.simulationData;
-        if ("returnValue" in simData && simData.returnValue) {
-          return scValToNative(simData.returnValue as xdr.ScVal) as boolean;
+      // Get the return value from simulation
+      let retval: xdr.ScVal | null = null;
+
+      if ("result" in simulation && (simulation as any).result) {
+        const result = (simulation as any).result;
+        if (result.retval) {
+          retval = result.retval;
         }
+      } else if ("returnValue" in simulation && simulation.returnValue) {
+        retval = simulation.returnValue as xdr.ScVal;
       }
 
-      return false;
+      if (!retval) {
+        return false;
+      }
+
+      // Convert ScVal to native boolean
+      const result = scValToNative(retval);
+      return Boolean(result);
+
     } catch (error) {
       console.error("Error checking pause status:", error);
       // Fallback to false if contract call fails

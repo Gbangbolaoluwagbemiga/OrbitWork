@@ -38,7 +38,15 @@ export async function signDeploy(deploy: Deploy, publicKeyHex: string): Promise<
           const parsed = JSON.parse(signedJson);
           // If it's wrapped in { deploy: ... }, extract it
           const deployData = parsed.deploy || parsed;
-          signedDeploy = Deploy.fromJSON(deployData);
+          try {
+            signedDeploy = Deploy.fromJSON(deployData);
+          } catch (e) {
+             // Fallback: Sometimes the signature is attached differently or the structure differs
+             // We can try to reconstruct the deploy with the new signature if possible
+             // But for now, let's try to be lenient with fromJSON if possible, or just re-throw with more info
+             console.error("Failed to parse signed deploy:", deployData);
+             throw e;
+          }
       } else {
           // Legacy support
           signedDeploy = Deploy.fromJSON(signedJson);

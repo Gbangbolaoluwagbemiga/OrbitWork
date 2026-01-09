@@ -39,7 +39,7 @@ export function createEscrowDeploy(
     CLValue.newCLString(m.description)
   );
 
-  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH);
+  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH.replace("hash-", ""));
 
   const args = Args.fromMap({
     "project_title": CLValue.newCLString(params.projectTitle),
@@ -81,7 +81,7 @@ export function applyToJobDeploy(
 ): Deploy {
   const senderPublicKey = PublicKey.fromHex(senderPublicKeyHex);
 
-  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH);
+  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH.replace("hash-", ""));
 
   const args = Args.fromMap({
     "escrow_id": CLValue.newCLUInt32(params.escrowId),
@@ -113,7 +113,7 @@ export function pauseJobCreationDeploy(
 ): Deploy {
   const senderPublicKey = PublicKey.fromHex(senderPublicKeyHex);
 
-  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH);
+  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH.replace("hash-", ""));
 
   // Assuming the entry point is named "pause_job_creation" taking no args
   const args = Args.fromMap({});
@@ -142,7 +142,7 @@ export function unpauseJobCreationDeploy(
 ): Deploy {
   const senderPublicKey = PublicKey.fromHex(senderPublicKeyHex);
 
-  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH);
+  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH.replace("hash-", ""));
 
   const args = Args.fromMap({});
 
