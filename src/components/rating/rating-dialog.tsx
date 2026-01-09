@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Star } from "lucide-react";
 import { contractService } from "@/lib/web3/contract-service";
 import { useToast } from "@/hooks/use-toast";
-import { useWeb3 } from "@/contexts/web3-context";
+import { useWeb3 } from "@/hooks/use-web3";
 
 interface RatingDialogProps {
   open: boolean;

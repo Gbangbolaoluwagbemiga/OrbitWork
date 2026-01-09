@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useWeb3 } from "@/contexts/web3-context";
+import { useWeb3 } from "@/hooks/use-web3";
 // Stellar doesn't use smart accounts or delegation
 // import { useSmartAccount } from "@/contexts/smart-account-context";
 // import { useDelegation } from "@/contexts/delegation-context";

@@ -1,6 +1,6 @@
 import {
   createContext,
-  useContext,
+  use,
   useState,
   useEffect,
   type ReactNode,
@@ -59,7 +59,7 @@ export function CasperProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <CasperContext.Provider
+    <CasperContext
       value={{
         address,
         isConnected,
@@ -70,12 +70,12 @@ export function CasperProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-    </CasperContext.Provider>
+    </CasperContext>
   );
 }
 
 export function useCasper() {
-  const context = useContext(CasperContext);
+  const context = use(CasperContext);
   if (context === undefined) {
     throw new Error("useCasper must be used within a CasperProvider");
   }

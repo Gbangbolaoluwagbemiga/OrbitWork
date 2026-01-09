@@ -1,6 +1,6 @@
 
 
-import { useWeb3 } from "@/contexts/web3-context";
+import { useWeb3 } from "@/hooks/use-web3";
 import { Card } from "@/components/ui/card";
 
 export function EOABalance() {

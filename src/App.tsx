@@ -31,8 +31,6 @@ function App() {
         <Route path="/freelancer" element={<FreelancerPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/approvals" element={<ApprovalsPage />} />
-        <Route path="/debug" element={<Debugger />} />
-        <Route path="/debug/:contractName" element={<Debugger />} />
       </Route>
     </Routes>
   );

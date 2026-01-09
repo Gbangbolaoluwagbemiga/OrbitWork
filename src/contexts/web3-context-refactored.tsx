@@ -4,7 +4,7 @@
  * Uses Zustand store and custom hooks instead of managing everything in context
  */
 
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { createContext, use, useEffect, type ReactNode } from "react";
 import { getCurrentNetwork } from "@/lib/web3/stellar-config";
 import useWalletStore from "@/store/wallet.store";
 import { useWalletRefactored } from "@/hooks/use-wallet-refactored";
@@ -120,7 +120,7 @@ export function Web3ProviderRefactored({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Web3Context.Provider
+    <Web3Context
       value={{
         wallet: {
           address,
@@ -136,12 +136,12 @@ export function Web3ProviderRefactored({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-    </Web3Context.Provider>
+    </Web3Context>
   );
 }
 
 export function useWeb3Refactored() {
-  const context = useContext(Web3Context);
+  const context = use(Web3Context);
   if (context === undefined) {
     throw new Error(
       "useWeb3Refactored must be used within Web3ProviderRefactored"

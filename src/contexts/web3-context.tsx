@@ -1,9 +1,11 @@
 import {
   createContext,
-  useContext,
+  use,
   useState,
   useEffect,
   useMemo,
+  useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import { getCurrentNetwork } from "@/lib/web3/stellar-config";
@@ -39,7 +41,15 @@ interface Web3ContextType {
   refreshBalance: () => Promise<void>;
 }
 
-const Web3Context = createContext<Web3ContextType | undefined>(undefined);
+export const Web3Context = createContext<Web3ContextType | undefined>(undefined);
+
+export function useWeb3() {
+  const context = use(Web3Context);
+  if (context === undefined) {
+    throw new Error("useWeb3 must be used within a Web3Provider");
+  }
+  return context;
+}
 
 export function Web3Provider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
@@ -50,8 +60,15 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     isConnected: false,
     balance: "0",
   });
+
+  // Keep a ref for accessing state in intervals/callbacks without dependencies
+  const walletStateRef = useRef(walletState);
+  useEffect(() => {
+    walletStateRef.current = walletState;
+  }, [walletState]);
   const [isOwner, setIsOwner] = useState(false);
-  const network = getCurrentNetwork();
+  const network = useMemo(() => getCurrentNetwork(), []);
+
 
   // Lazy initialization of RPC server to avoid undefined errors
   const getRpcServer = useMemo(() => {
@@ -64,61 +81,42 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     return () => new rpc.Server(network.rpcUrl);
   }, [network.rpcUrl]);
 
-  const createRpcServer = () => {
+  const createRpcServer = useCallback(() => {
     if (!getRpcServer) {
       throw new Error(
         "rpc.Server is not available. Please check @stellar/stellar-sdk installation."
       );
     }
     return getRpcServer();
-  };
+  }, [getRpcServer]);
 
-  useEffect(() => {
-    checkConnection();
-
-    // Check connection periodically, but only if we have walletId in storage
-    // Don't repeatedly call wallet.getAddress() which opens popups
-    const interval = setInterval(() => {
-      const walletId = storage.getItem("walletId");
-      const walletAddr = storage.getItem("walletAddress");
-
-      // Only check if we have walletId but no connection state
-      // If we already have address in storage, just update state without calling wallet
-      if (!walletState.isConnected && walletId && walletAddr) {
-        // Update state from storage without calling wallet methods
-        // Preserve existing balance - don't reset it
-        setWalletState((prev) => ({
-          address: walletAddr,
-          chainId: null,
-          isConnected: true,
-          balance: prev.balance || "0", // Keep existing balance
-        }));
-      } else if (!walletState.isConnected && walletId && !walletAddr) {
-        // Only call checkConnection if we have walletId but no cached address
-        // This prevents repeated popups
-        checkConnection();
-      }
-      // Don't call checkConnection if already connected - this prevents balance resets
-    }, 10000); // Increased interval to 10 seconds to reduce frequency
-
-    return () => {
-      clearInterval(interval);
-    };
+  const checkOwnerStatus = useCallback(async (address: string) => {
+    try {
+      // Check if address matches known owner
+      // This should be set from environment or contract
+      const knownOwner = import.meta.env.VITE_OWNER_ADDRESS || "";
+      setIsOwner(address === knownOwner);
+    } catch (error) {
+      setIsOwner(false);
+    }
   }, []);
 
-  const checkConnection = async () => {
+  const checkConnection = useCallback(async () => {
     try {
       const walletId = storage.getItem("walletId");
       const walletAddr = storage.getItem("walletAddress");
 
       if (walletId && walletAddr) {
+        // Use ref for current state
+        const currentWalletState = walletStateRef.current;
+
         // If we already have the address in storage and state matches,
         // just fetch balance without calling wallet.getAddress() (which opens popup)
-        if (walletState.isConnected && walletState.address === walletAddr) {
+        if (currentWalletState.isConnected && currentWalletState.address === walletAddr) {
           // Just refresh balance, don't call wallet methods
           // Only refresh if we don't already have a valid balance
           // This prevents unnecessary API calls and balance resets
-          if (!walletState.balance || walletState.balance === "0") {
+          if (!currentWalletState.balance || currentWalletState.balance === "0") {
             try {
               const { Horizon } = await import("@stellar/stellar-sdk");
               const horizonUrl =
@@ -203,7 +201,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
                 address: publicKey,
                 chainId: null,
                 isConnected: true,
-                balance: prev.balance || "0", // Keep existing balance if fetch fails
+                balance: prev.balance || "0",
               }));
               await checkOwnerStatus(publicKey);
             }
@@ -217,20 +215,42 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       // Wallet not available or not connected
       console.log("Wallet not connected");
     }
-  };
+  }, [network.horizonUrl, checkOwnerStatus]);
 
-  const checkOwnerStatus = async (address: string) => {
-    try {
-      // Check if address matches known owner
-      // This should be set from environment or contract
-      const knownOwner = import.meta.env.VITE_OWNER_ADDRESS || "";
-      setIsOwner(address === knownOwner);
-    } catch (error) {
-      setIsOwner(false);
-    }
-  };
+  useEffect(() => {
+    checkConnection();
 
-  const connectWallet = async () => {
+    // Check connection periodically, but only if we have walletId in storage
+    // Don't repeatedly call wallet.getAddress() which opens popups
+    const interval = setInterval(() => {
+      const walletId = storage.getItem("walletId");
+      const walletAddr = storage.getItem("walletAddress");
+
+      // Only check if we have walletId but no connection state
+      // If we already have address in storage, just update state without calling wallet
+      if (!walletStateRef.current.isConnected && walletId && walletAddr) {
+        // Update state from storage without calling wallet methods
+        // Preserve existing balance - don't reset it
+        setWalletState((prev) => ({
+          address: walletAddr,
+          chainId: null,
+          isConnected: true,
+          balance: prev.balance || "0", // Keep existing balance
+        }));
+      } else if (!walletStateRef.current.isConnected && walletId && !walletAddr) {
+        // Only call checkConnection if we have walletId but no cached address
+        // This prevents repeated popups
+        checkConnection();
+      }
+      // Don't call checkConnection if already connected - this prevents balance resets
+    }, 10000); // Increased interval to 10 seconds to reduce frequency
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [checkConnection]);
+
+  const connectWallet = useCallback(async () => {
     try {
       // Use Stellar Wallets Kit to connect
       await connectWalletUtil();
@@ -330,9 +350,9 @@ export function Web3Provider({ children }: { children: ReactNode }) {
         variant: "destructive",
       });
     }
-  };
+  }, [checkOwnerStatus, network.horizonUrl, toast]);
 
-  const disconnectWallet = async () => {
+  const disconnectWallet = useCallback(async () => {
     await disconnectWalletUtil();
     setWalletState({
       address: null,
@@ -345,9 +365,9 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       title: "Wallet disconnected",
       description: "Your wallet has been disconnected",
     });
-  };
+  }, [toast]);
 
-  const switchNetwork = async (
+  const switchNetwork = useCallback(async (
     targetNetwork: "testnet" | "mainnet" | "local"
   ) => {
     // Stellar networks are handled via environment variables
@@ -356,9 +376,9 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       title: "Network switch",
       description: `Switching to ${targetNetwork}. Please update VITE_STELLAR_NETWORK in .env`,
     });
-  };
+  }, [toast]);
 
-  const getContract = (contractId: string) => {
+  const getContract = useCallback((contractId: string) => {
     if (!contractId || contractId === "") {
       console.error(
         "Contract ID is required. Please set VITE_SECUREFLOW_CONTRACT_ID in your .env file"
@@ -1479,9 +1499,9 @@ export function Web3Provider({ children }: { children: ReactNode }) {
         return import.meta.env.VITE_OWNER_ADDRESS || "";
       },
     };
-  };
+  }, [walletState.address, walletState.isConnected, network, createRpcServer, walletSignTransaction]);
 
-  const refreshBalance = async () => {
+  const refreshBalance = useCallback(async () => {
     if (!walletState.isConnected || !walletState.address) {
       return;
     }
@@ -1517,30 +1537,23 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error refreshing balance:", error);
     }
-  };
+  }, [walletState.isConnected, walletState.address, network.horizonUrl]);
+
+  const value = useMemo(() => ({
+    wallet: walletState,
+    connectWallet,
+    disconnectWallet,
+    switchNetwork,
+    getContract,
+    isOwner,
+    network,
+    refreshBalance,
+  }), [walletState, connectWallet, disconnectWallet, switchNetwork, getContract, isOwner, network, refreshBalance]);
 
   return (
-    <Web3Context.Provider
-      value={{
-        wallet: walletState,
-        connectWallet,
-        disconnectWallet,
-        switchNetwork,
-        getContract,
-        isOwner,
-        network,
-        refreshBalance,
-      }}
-    >
+    <Web3Context value={value}>
       {children}
-    </Web3Context.Provider>
+    </Web3Context>
   );
 }
 
-export function useWeb3() {
-  const context = useContext(Web3Context);
-  if (context === undefined) {
-    throw new Error("useWeb3 must be used within a Web3Provider");
-  }
-  return context;
-}
