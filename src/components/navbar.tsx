@@ -72,7 +72,7 @@ export function Navbar() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 glass">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-2">
           <Link to="/" className="flex items-center gap-2 font-bold text-xl">
-            <Shield className="h-6 w-6 text-primary" />
+            <img src="/orbitwork-favicon.svg" alt="OrbitWork" className="h-8 w-8" />
             <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               OrbitWork
             </span>

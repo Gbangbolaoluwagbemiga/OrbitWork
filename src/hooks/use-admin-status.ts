@@ -46,11 +46,21 @@ export function useAdminStatus() {
       }
 
       // 1. Check against environment variable (Works for both Stellar and Casper)
-      const envOwner = import.meta.env.VITE_OWNER_ADDRESS || "";
-      if (
-        envOwner &&
-        currentAddress.toLowerCase().trim() === envOwner.toLowerCase().trim()
-      ) {
+            const envOwner = import.meta.env.VITE_OWNER_ADDRESS || "";
+            
+            // Hackathon helper: If no VITE_OWNER_ADDRESS is set, treat the connected Casper account as admin
+            // This allows the deployer to immediately see admin pages without configuring .env
+            if (!envOwner && isCasperConnected && casperAddress) {
+               console.log("No VITE_OWNER_ADDRESS set. Granting Admin access to connected Casper wallet for demo.");
+               setIsOwner(true);
+               setIsAdmin(true);
+               return;
+            }
+
+            if (
+              envOwner &&
+              currentAddress.toLowerCase().trim() === envOwner.toLowerCase().trim()
+            ) {
         console.log("Admin access granted via VITE_OWNER_ADDRESS");
         setIsOwner(true);
         setIsAdmin(true);
