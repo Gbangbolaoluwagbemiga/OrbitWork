@@ -20,6 +20,7 @@ import {
 import { contractService } from "@/lib/web3/contract-service";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useCasper } from "@/contexts/casper-context";
+import { SECUREFLOW_CONTRACT_HASH } from "@/lib/casper/contracts";
 
 // Unused imports removed: AdminHeader, AdminStats, ContractControls, AdminLoading
 import { DisputeResolution } from "@/components/admin/dispute-resolution";
@@ -40,7 +41,6 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function AdminPage() {
-  const { wallet, getContract } = useWeb3();
   const { isConnected: isCasperConnected, address: casperAddress } = useCasper();
   const {
     isAdmin,
@@ -61,7 +61,7 @@ export default function AdminPage() {
     "pause" | "unpause" | "withdraw" | "authorizeArbiter" | null
   >(null);
   const [withdrawData, setWithdrawData] = useState({
-    token: "", // Stellar: use empty string for native XLM, or contract address for tokens
+    token: "", 
     amount: "",
   });
   const [arbiterAddress, setArbiterAddress] = useState("");
@@ -76,26 +76,14 @@ export default function AdminPage() {
 
   const fetchContractOwner = useCallback(async () => {
     try {
-      // Get owner from contract
-      const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
-      if (contract) {
-        const owner = await contract.owner();
-        if (owner) {
-          setContractOwner(owner);
-        } else {
-          // Fallback to env variable
-          const ownerFromEnv = import.meta.env.VITE_OWNER_ADDRESS;
-          if (ownerFromEnv) {
-            setContractOwner(ownerFromEnv);
-          }
-        }
-      } else {
         // Fallback to env variable
         const ownerFromEnv = import.meta.env.VITE_OWNER_ADDRESS;
         if (ownerFromEnv) {
           setContractOwner(ownerFromEnv);
+        } else if (isCasperConnected && casperAddress) {
+          // Demo mode: Connected wallet is owner
+          setContractOwner(casperAddress);
         }
-      }
     } catch (error) {
       console.error("Error fetching contract owner:", error);
       // Fallback to env variable
@@ -104,7 +92,7 @@ export default function AdminPage() {
         setContractOwner(ownerFromEnv);
       }
     }
-  }, [getContract]);
+  }, [isCasperConnected, casperAddress]);
 
   const fetchContractStats = useCallback(async () => {
     try {
@@ -133,33 +121,23 @@ export default function AdminPage() {
   const checkPausedStatus = useCallback(async () => {
     setLoading(true);
     try {
-      if (isCasperConnected) {
-        // For Casper, we assume false for now as we don't have a read method implemented yet
-        // This avoids calling the Stellar service which would fail
-        setIsPaused(false);
-      } else {
-        // Pass the wallet address to the contract service
-        const paused = await contractService.isJobCreationPaused(
-          wallet.address || undefined
-        );
-        setIsPaused(paused);
-      }
+      // For Casper, we assume false for now as we don't have a read method implemented yet
+      setIsPaused(false);
     } catch (error) {
       console.error("Error checking pause status:", error);
-      // Fallback to false if contract call fails
       setIsPaused(false);
     } finally {
       setLoading(false);
     }
-  }, [wallet.address, isCasperConnected]);
+  }, []);
 
   useEffect(() => {
-    if ((wallet.isConnected && wallet.address) || isCasperConnected) {
+    if (isCasperConnected && casperAddress) {
       checkPausedStatus();
       fetchContractOwner();
       fetchContractStats();
     }
-  }, [wallet.isConnected, wallet.address, isCasperConnected, checkPausedStatus, fetchContractOwner, fetchContractStats]);
+  }, [isCasperConnected, casperAddress, checkPausedStatus, fetchContractOwner, fetchContractStats]);
 
   const openDialog = (type: typeof actionType) => {
     setActionType(type);
@@ -199,42 +177,21 @@ export default function AdminPage() {
         return;
       }
 
-      if ((!wallet.isConnected || !wallet.address) && !isCasperConnected) {
+      if (!isCasperConnected || !casperAddress) {
         throw new Error("Wallet not connected");
       }
 
-      const connectedAddress = isCasperConnected ? casperAddress : wallet.address;
+      const connectedAddress = casperAddress;
 
       switch (actionType) {
         case "pause":
           // Check if contract is already paused
-          const currentPausedStatusForPause =
-            await contractService.isJobCreationPaused(
-              wallet.address || undefined
-            );
-
-          if (currentPausedStatusForPause) {
-            toast({
-              title: "Contract Already Paused",
-              description: "The contract is already in a paused state",
-              variant: "destructive",
-            });
-            setDialogOpen(false);
-            return;
-          }
-
+          // For Casper, skipping pre-check until read methods are ready or assume false
+          
           // Check if user is owner
           if (contractOwner && connectedAddress !== contractOwner) {
-            // For Casper, the owner comparison might need to be case-insensitive or format-aware
-            // For now, assuming direct string comparison
-            if (isCasperConnected) {
                // Bypass owner check for Casper if contractOwner is not set correctly for Casper yet
                // or ensure contractOwner is fetched correctly for Casper
-            } else if (wallet.address !== contractOwner) {
-               throw new Error(
-                `Only the contract owner (${contractOwner.slice(0, 8)}...) can pause the contract. Your wallet: ${connectedAddress?.slice(0, 8)}...`
-              );
-            }
           }
 
           // Use the new hook to pause
@@ -245,30 +202,9 @@ export default function AdminPage() {
           break;
 
         case "unpause":
-          // Check if contract is already unpaused
-          const currentPausedStatus = await contractService.isJobCreationPaused(
-            wallet.address || undefined
-          );
-
-          if (!currentPausedStatus) {
-            toast({
-              title: "Contract Already Unpaused",
-              description: "The contract is already in an unpaused state",
-              variant: "destructive",
-            });
-            setDialogOpen(false);
-            return;
-          }
-
           // Check if user is owner
            if (contractOwner && connectedAddress !== contractOwner) {
-            if (isCasperConnected) {
                // Bypass owner check for Casper
-            } else if (wallet.address !== contractOwner) {
-               throw new Error(
-                `Only the contract owner (${contractOwner.slice(0, 8)}...) can unpause the contract. Your wallet: ${connectedAddress?.slice(0, 8)}...`
-              );
-            }
           }
 
           // Use the new hook to unpause
@@ -292,7 +228,7 @@ export default function AdminPage() {
             toast({
               title: "Invalid Address",
               description: "Please enter a valid arbiter address",
-              variant: "destructive",
+            variant: "destructive",
             });
             setDialogOpen(false);
             return;
@@ -379,7 +315,7 @@ export default function AdminPage() {
     }
   };
 
-  if ((!wallet.isConnected || !wallet.address) && !isCasperConnected) {
+  if (!isCasperConnected || !casperAddress) {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-mesh">
         <Card className="glass border-primary/20 p-12 text-center max-w-md">
@@ -421,7 +357,7 @@ export default function AdminPage() {
             <p className="text-xs text-muted-foreground">
               <span className="font-semibold">Your wallet:</span>
               <br />
-              <span className="font-mono">{wallet.address}</span>
+              <span className="font-mono">{casperAddress}</span>
             </p>
             {contractOwner && (
               <p className="text-xs text-muted-foreground">
@@ -777,7 +713,7 @@ export default function AdminPage() {
                   Owner Address
                 </Label>
                 <p className="font-mono text-sm bg-muted/50 p-3 rounded-lg">
-                  {contractOwner || (isCasperConnected ? casperAddress : wallet.address)}
+                  {contractOwner || (isCasperConnected ? casperAddress : "Not connected")}
                 </p>
               </div>
               <div>
@@ -785,7 +721,7 @@ export default function AdminPage() {
                   Connected Wallet
                 </Label>
                 <p className="font-mono text-sm bg-muted/50 p-3 rounded-lg">
-                  {isCasperConnected ? casperAddress : wallet.address}
+                  {isCasperConnected ? casperAddress : "Not connected"}
                 </p>
               </div>
               <div>
@@ -793,7 +729,7 @@ export default function AdminPage() {
                   Contract Address
                 </Label>
                 <p className="font-mono text-sm bg-muted/50 p-3 rounded-lg">
-                  {CONTRACTS.SECUREFLOW_ESCROW}
+                  {isCasperConnected ? SECUREFLOW_CONTRACT_HASH : CONTRACTS.SECUREFLOW_ESCROW}
                 </p>
               </div>
               <div>
@@ -801,7 +737,9 @@ export default function AdminPage() {
                   Network
                 </Label>
                 <p className="text-sm bg-muted/50 p-3 rounded-lg">
-                  {isCasperConnected ? "Casper Testnet" : "Stellar Testnet"}
+                  {isCasperConnected 
+                    ? "Casper Testnet" 
+                    : "Not Connected"}
                 </p>
               </div>
               <div>
@@ -809,7 +747,9 @@ export default function AdminPage() {
                   Chain ID
                 </Label>
                 <p className="text-sm bg-muted/50 p-3 rounded-lg">
-                  {isCasperConnected ? "casper-test" : "84532"}
+                  {isCasperConnected 
+                    ? "casper-test" 
+                    : "-"}
                 </p>
               </div>
               <div>
@@ -894,7 +834,7 @@ export default function AdminPage() {
                 <Label htmlFor="token">Token Address</Label>
                 <Input
                   id="token"
-                  placeholder="G..."
+                  placeholder="01..."
                   value={withdrawData.token}
                   onChange={(e) =>
                     setWithdrawData({ ...withdrawData, token: e.target.value })
@@ -923,13 +863,13 @@ export default function AdminPage() {
                 <Label htmlFor="arbiter-address-dialog">Arbiter Address</Label>
                 <Input
                   id="arbiter-address-dialog"
-                  placeholder="G..."
+                  placeholder="01..."
                   value={arbiterAddress}
                   onChange={(e) => setArbiterAddress(e.target.value)}
                   className="font-mono"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Enter a Stellar address (starts with G) to authorize as an
+                  Enter a Casper public key (starts with 01 or 02) to authorize as an
                   arbiter
                 </p>
               </div>

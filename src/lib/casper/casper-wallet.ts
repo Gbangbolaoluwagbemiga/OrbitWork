@@ -32,28 +32,126 @@ export async function signDeploy(deploy: Deploy, publicKeyHex: string): Promise<
       const deployJson = Deploy.toJSON(deploy);
       const signedJson = await provider.sign(JSON.stringify(deployJson), publicKeyHex);
       
-      let signedDeploy: Deploy;
-      if (typeof signedJson === 'string') {
-          // If it returns a string (Casper Wallet), parse it
-          const parsed = JSON.parse(signedJson);
-          // If it's wrapped in { deploy: ... }, extract it
-          const deployData = parsed.deploy || parsed;
-          try {
-            signedDeploy = Deploy.fromJSON(deployData);
-          } catch (e) {
-             // Fallback: Sometimes the signature is attached differently or the structure differs
-             // We can try to reconstruct the deploy with the new signature if possible
-             // But for now, let's try to be lenient with fromJSON if possible, or just re-throw with more info
-             console.error("Failed to parse signed deploy:", deployData);
-             throw e;
-          }
-      } else {
-          // Legacy support
-          signedDeploy = Deploy.fromJSON(signedJson);
-      }
+      let signedDeploy: Deploy | undefined;
       
-      return signedDeploy;
-  } catch (error) {
+      try {
+          // Try standard parsing first
+          if (typeof signedJson === 'string') {
+              const parsed = JSON.parse(signedJson);
+              const deployData = parsed.deploy || parsed;
+              signedDeploy = Deploy.fromJSON(deployData);
+          } else {
+              signedDeploy = Deploy.fromJSON(signedJson);
+          }
+      } catch (parseError) {
+                  console.warn("Deploy.fromJSON failed, attempting manual signature extraction. Error:", parseError);
+                  
+                  // Manual fallback using JSON manipulation to avoid class mismatch issues
+                  let deployData: any;
+                  if (typeof signedJson === 'string') {
+                     try {
+                        const parsed = JSON.parse(signedJson);
+                        deployData = parsed.deploy || parsed;
+                     } catch(e) {
+                        console.error("Failed to parse signedJson string:", e);
+                        throw parseError;
+                     }
+                  } else {
+                     deployData = signedJson;
+                  }
+                  
+                  // Work with JSON representation to avoid Approval class issues
+                  const originalDeployJson = Deploy.toJSON(deploy);
+                  const deployToUpdate = (originalDeployJson as any).deploy || originalDeployJson;
+                  
+                  if (!deployToUpdate.approvals) {
+                      deployToUpdate.approvals = [];
+                  }
+
+                  // Look for approvals in response
+                  const approvals = deployData.approvals || (deployData.deploy && deployData.deploy.approvals);
+                  
+                  if (approvals && Array.isArray(approvals) && approvals.length > 0) {
+                     console.log("Found approvals in response:", approvals);
+                     
+                     for (const a of approvals) {
+                        const signer = a.signer; // Hex string
+                        let signature = a.signature; // Hex string
+                        
+                        if (signer && signature) {
+                            // Fix signature tag if needed
+                            // Case 1: Signature is 130 chars (65 bytes) but has wrong tag
+                            if (signature.length === 130) {
+                                const expectedTag = signer.substring(0, 2);
+                                const currentTag = signature.substring(0, 2);
+                                if (currentTag !== expectedTag && (expectedTag === '01' || expectedTag === '02')) {
+                                    console.warn(`Signature tag mismatch in approval. Expected ${expectedTag}, got ${currentTag}. Correcting...`);
+                                    signature = expectedTag + signature.substring(2);
+                                }
+                            }
+                            // Case 2: Signature is 128 chars (64 bytes) - Missing tag
+                            else if (signature.length === 128) {
+                                const expectedTag = signer.substring(0, 2);
+                                if (expectedTag === '01' || expectedTag === '02') {
+                                    console.warn(`Signature length is 128 (missing tag). Prepending expected tag ${expectedTag}...`);
+                                    signature = expectedTag + signature;
+                                }
+                            }
+
+                            // Check for duplicates
+                            if (!deployToUpdate.approvals.some((existing: any) => existing.signer === signer)) {
+                                deployToUpdate.approvals.push({
+                                    signer: signer,
+                                    signature: signature
+                                });
+                            }
+                        }
+                     }
+                  } else if (deployData.signatureHex) {
+                     console.log("Found signatureHex in response:", deployData.signatureHex);
+                     
+                     const signer = publicKeyHex;
+                     let signature = deployData.signatureHex;
+                     
+                     // Fix signature tag if needed
+                      // Casper Wallet sometimes returns a signature with a non-standard tag (e.g. 'fd')
+                      // We force the signature tag to match the public key tag for standard 64-byte signatures
+                      if (signature.length === 130) { // 1 byte tag + 64 bytes signature = 65 bytes = 130 hex chars
+                          const expectedTag = signer.substring(0, 2);
+                          const currentTag = signature.substring(0, 2);
+                          if (currentTag !== expectedTag && (expectedTag === '01' || expectedTag === '02')) {
+                              console.warn(`Signature tag mismatch. Expected ${expectedTag}, got ${currentTag}. Correcting...`);
+                              signature = expectedTag + signature.substring(2);
+                          }
+                      }
+                      // Case 2: Signature is 128 chars (64 bytes) - Missing tag
+                      else if (signature.length === 128) {
+                          const expectedTag = signer.substring(0, 2);
+                          if (expectedTag === '01' || expectedTag === '02') {
+                              console.warn(`Signature length is 128 (missing tag). Prepending expected tag ${expectedTag}...`);
+                              signature = expectedTag + signature;
+                          }
+                      }
+                     
+                     // Check for duplicates
+                     if (!deployToUpdate.approvals.some((existing: any) => existing.signer === signer)) {
+                         deployToUpdate.approvals.push({
+                             signer: signer,
+                             signature: signature
+                         });
+                     }
+                  } else {
+                     console.error("No approvals found in response:", deployData);
+                     throw parseError; // Re-throw original error if we can't save it
+                  }
+
+                  // Reconstruct valid Deploy object from the updated JSON
+                  // This ensures internal consistency and serialization compatibility
+                  signedDeploy = Deploy.fromJSON(originalDeployJson);
+              }
+              
+              return signedDeploy || null;
+          } catch (error) {
       console.error("Error signing deploy:", error);
       return null;
   }

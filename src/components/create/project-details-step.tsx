@@ -164,10 +164,10 @@ export function ProjectDetailsStep({
               id="beneficiary"
               value={formData.beneficiary}
               onChange={(e) => onUpdate({ beneficiary: e.target.value })}
-              placeholder="G..."
+              placeholder="01..."
               disabled={formData.isOpenJob}
               required={!formData.isOpenJob}
-              pattern="^G[A-Z0-9]{55}$"
+              pattern="^(01|02)[0-9a-fA-F]{64}$"
               className={
                 errors?.beneficiary ? "border-red-500 focus:border-red-500" : ""
               }
@@ -178,7 +178,7 @@ export function ProjectDetailsStep({
               <p className="text-xs text-muted-foreground mt-1">
                 {formData.isOpenJob
                   ? "Leave empty for open job applications"
-                  : "Valid Stellar address required for direct escrow"}
+                  : "Valid Casper public key required for direct escrow"}
               </p>
             )}
           </div>
@@ -194,7 +194,7 @@ export function ProjectDetailsStep({
               className="rounded w-4 h-4"
             />
             <Label htmlFor="useNativeToken" className="cursor-pointer">
-              Use Native Token (XLM)
+              Use Native Token (CSPR)
             </Label>
           </div>
 
@@ -203,59 +203,44 @@ export function ProjectDetailsStep({
               <Label htmlFor="tokenAddress" className="mb-2 block">
                 Token Address *
               </Label>
-              {isCasperConnected ? (
-                <div className="space-y-2">
-                  <Select 
-                    value={CASPER_TESTNET_TOKENS.some(t => t.address === formData.token) ? formData.token : "custom"} 
-                    onValueChange={(val) => {
-                      if (val !== "custom") onUpdate({ token: val });
-                      else onUpdate({ token: "" }); // Reset if custom selected to allow typing
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a whitelisted token" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CASPER_TESTNET_TOKENS.map((t) => (
-                        <SelectItem key={t.address} value={t.address}>
-                          {t.name} ({t.symbol})
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="custom">Custom Address</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {(!CASPER_TESTNET_TOKENS.some(t => t.address === formData.token) || formData.token === "") && (
-                     <Input
-                        id="tokenAddress"
-                        value={formData.token}
-                        onChange={(e) => onUpdate({ token: e.target.value })}
-                        placeholder="hash-..."
-                        required
-                        className={
-                          errors?.tokenAddress ? "border-red-500 focus:border-red-500" : ""
-                        }
-                      />
-                  )}
-                </div>
-              ) : (
-                <Input
-                  id="tokenAddress"
-                  value={formData.token}
-                  onChange={(e) => onUpdate({ token: e.target.value })}
-                  placeholder="C..."
-                  required
-                  className={
-                    errors?.tokenAddress ? "border-red-500 focus:border-red-500" : ""
-                  }
-                />
-              )}
+              <div className="space-y-2">
+                <Select 
+                  value={CASPER_TESTNET_TOKENS.some(t => t.address === formData.token) ? formData.token : "custom"} 
+                  onValueChange={(val) => {
+                    if (val !== "custom") onUpdate({ token: val });
+                    else onUpdate({ token: "" }); // Reset if custom selected to allow typing
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a whitelisted token" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CASPER_TESTNET_TOKENS.map((t) => (
+                      <SelectItem key={t.address} value={t.address}>
+                        {t.name} ({t.symbol})
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">Custom Address</SelectItem>
+                  </SelectContent>
+                </Select>
+                {(!CASPER_TESTNET_TOKENS.some(t => t.address === formData.token) || formData.token === "") && (
+                    <Input
+                      id="tokenAddress"
+                      value={formData.token}
+                      onChange={(e) => onUpdate({ token: e.target.value })}
+                      placeholder="hash-..."
+                      required
+                      className={
+                        errors?.tokenAddress ? "border-red-500 focus:border-red-500" : ""
+                      }
+                    />
+                )}
+              </div>
               {errors?.tokenAddress ? (
                 <p className="text-red-500 text-sm mt-1">{errors.tokenAddress}</p>
               ) : (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {isCasperConnected 
-                    ? "Enter the contract hash of your CEP-18 token" 
-                    : "Enter the contract address of your Soroban token deployed on Stellar Testnet"}
+                  Enter the contract hash of your CEP-18 token
                 </p>
               )}
             </div>

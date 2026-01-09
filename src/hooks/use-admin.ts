@@ -3,9 +3,7 @@
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { contractService } from "@/lib/web3/contract-service";
 import { toast } from "@/hooks/use-toast";
-import { useWeb3 } from "@/hooks/use-web3";
 import { useCasper } from "@/contexts/casper-context";
 import { signDeploy, sendDeploy } from "@/lib/casper/casper-wallet";
 import { pauseJobCreationDeploy, unpauseJobCreationDeploy } from "@/lib/casper/contracts";
@@ -15,7 +13,6 @@ import { pauseJobCreationDeploy, unpauseJobCreationDeploy } from "@/lib/casper/c
  */
 export function usePauseJobCreation() {
   const queryClient = useQueryClient();
-  const { wallet } = useWeb3();
   const { isConnected: isCasperConnected, address: casperAddress } = useCasper();
 
   return useMutation({
@@ -28,10 +25,7 @@ export function usePauseJobCreation() {
          return await sendDeploy(signedDeploy);
       }
       
-      if (!wallet.address) {
-        throw new Error("Wallet not connected");
-      }
-      return contractService.pauseJobCreation(wallet.address);
+      throw new Error("Wallet not connected");
     },
     onSuccess: (txHash) => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
@@ -55,7 +49,6 @@ export function usePauseJobCreation() {
  */
 export function useUnpauseJobCreation() {
   const queryClient = useQueryClient();
-  const { wallet } = useWeb3();
   const { isConnected: isCasperConnected, address: casperAddress } = useCasper();
 
   return useMutation({
@@ -68,10 +61,7 @@ export function useUnpauseJobCreation() {
          return await sendDeploy(signedDeploy);
       }
 
-      if (!wallet.address) {
-        throw new Error("Wallet not connected");
-      }
-      return contractService.unpauseJobCreation(wallet.address);
+      throw new Error("Wallet not connected");
     },
     onSuccess: (txHash) => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
@@ -97,7 +87,9 @@ export function useSetPlatformFee() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (feeBP: number) => contractService.setPlatformFeeBP(feeBP),
+    mutationFn: async (feeBP: number) => {
+      throw new Error("Not implemented for Casper yet");
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
       toast({
@@ -122,8 +114,8 @@ export function useSetFeeCollector() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (feeCollector: string) =>
-      contractService.setFeeCollector(feeCollector),
+    mutationFn: async (feeCollector: string) =>
+      { throw new Error("Not implemented for Casper yet"); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
       toast({
@@ -148,7 +140,7 @@ export function useWhitelistToken() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (token: string) => contractService.whitelistToken(token),
+    mutationFn: async (token: string) => { throw new Error("Not implemented for Casper yet"); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
       toast({
@@ -173,7 +165,7 @@ export function useAuthorizeArbiter() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (arbiter: string) => contractService.authorizeArbiter(arbiter),
+    mutationFn: async (arbiter: string) => { throw new Error("Not implemented for Casper yet"); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
       toast({

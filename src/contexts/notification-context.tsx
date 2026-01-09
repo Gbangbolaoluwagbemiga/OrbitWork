@@ -7,7 +7,7 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import { useWeb3 } from "./web3-context";
+import { useCasper } from "@/contexts/casper-context";
 import { useToast } from "@/hooks/use-toast";
 
 export interface Notification {
@@ -44,14 +44,14 @@ const NotificationContext = createContext<NotificationContextType | undefined>(
 );
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const { wallet } = useWeb3();
+  const { isConnected: isCasperConnected, address: casperAddress } = useCasper();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   // Load notifications from localStorage on mount and when wallet changes
   useEffect(() => {
-    if (wallet.isConnected && wallet.address) {
-      const saved = localStorage.getItem(`notifications_${wallet.address}`);
+    if (isCasperConnected && casperAddress) {
+      const saved = localStorage.getItem(`notifications_${casperAddress}`);
       if (saved) {
         const parsedNotifications = JSON.parse(saved);
         // Convert timestamp strings back to Date objects
@@ -70,17 +70,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       // If wallet not connected, clear notifications
       setNotifications([]);
     }
-  }, [wallet.isConnected, wallet.address]);
+  }, [isCasperConnected, casperAddress]);
 
   // Save notifications to localStorage when they change
   useEffect(() => {
-    if (wallet.isConnected && wallet.address) {
+    if (isCasperConnected && casperAddress) {
       localStorage.setItem(
-        `notifications_${wallet.address}`,
+        `notifications_${casperAddress}`,
         JSON.stringify(notifications),
       );
     }
-  }, [notifications, wallet.isConnected, wallet.address]);
+  }, [notifications, isCasperConnected, casperAddress]);
 
   const addNotification = (
     notification: Omit<Notification, "id" | "timestamp" | "read">,
@@ -99,7 +99,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     // If target addresses are specified, also store for those addresses (cross-wallet notifications)
     if (targetAddresses && targetAddresses.length > 0) {
       targetAddresses.forEach((address) => {
-        if (address && address !== wallet.address) {
+        if (address && casperAddress && address !== casperAddress) {
           const existingNotifications = JSON.parse(
             localStorage.getItem(`notifications_${address}`) || "[]",
           );
@@ -167,13 +167,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const targetAddresses = [];
     if (
       clientAddress &&
-      clientAddress.toLowerCase() !== wallet.address?.toLowerCase()
+      clientAddress.toLowerCase() !== casperAddress?.toLowerCase()
     ) {
       targetAddresses.push(clientAddress.toLowerCase());
     }
     if (
       freelancerAddress &&
-      freelancerAddress.toLowerCase() !== wallet.address?.toLowerCase()
+      freelancerAddress.toLowerCase() !== casperAddress?.toLowerCase()
     ) {
       targetAddresses.push(freelancerAddress.toLowerCase());
     }
@@ -202,7 +202,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <NotificationContext
+    <NotificationContext.Provider
       value={{
         notifications,
         unreadCount,
@@ -215,7 +215,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-    </NotificationContext>
+    </NotificationContext.Provider>
   );
 }
 

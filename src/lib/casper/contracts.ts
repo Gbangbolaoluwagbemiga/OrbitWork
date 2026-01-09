@@ -11,7 +11,15 @@ import {
 import { DEFAULT_NETWORK } from "./casper-config";
 
 // Placeholder for the deployed contract hash
-export const SECUREFLOW_CONTRACT_HASH = "hash-0000000000000000000000000000000000000000000000000000000000000000"; 
+// Try to get from environment variable first
+export const SECUREFLOW_CONTRACT_HASH = 
+  import.meta.env.VITE_CASPER_CONTRACT_HASH || 
+  import.meta.env.VITE_SECUREFLOW_CONTRACT_HASH || 
+  "hash-0000000000000000000000000000000000000000000000000000000000000000"; 
+
+if (SECUREFLOW_CONTRACT_HASH.includes("00000000000000000000000000000000")) {
+  console.warn("⚠️ WARNING: SECUREFLOW_CONTRACT_HASH is set to default zeros. Contract interactions will fail. Please set VITE_CASPER_CONTRACT_HASH in your .env file.");
+}
 
 export interface CreateEscrowParams {
   projectTitle: string;

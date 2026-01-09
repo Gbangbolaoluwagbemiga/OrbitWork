@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { useWeb3 } from "@/hooks/use-web3";
 import { useCasper } from "@/contexts/casper-context";
 import { useCasperEscrow } from "@/hooks/use-casper-escrow";
 // Unused import removed: useSmartAccount
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF } from "@/lib/web3/config";
 
 import { useNavigate } from "react-router-dom";
 import { ProjectDetailsStep } from "@/components/create/project-details-step";
@@ -22,11 +20,8 @@ interface Milestone {
 
 export default function CreateEscrowPage() {
   const navigate = useNavigate();
-  const { wallet } = useWeb3();
-  const casper = useCasper();
+  const { isConnected: isCasperConnected, address: casperAddress } = useCasper();
   const { createEscrow: createCasperEscrow, isLoading: isCasperLoading } = useCasperEscrow();
-  // Stellar doesn't use smart accounts
-  // const { executeTransaction, isSmartAccountReady } = useSmartAccount();
   const { toast } = useToast();
   const createEscrow = useCreateEscrow();
   const [step, setStep] = useState(1);
@@ -53,21 +48,20 @@ export default function CreateEscrowPage() {
 
 
   const checkNetworkStatus = useCallback(async () => {
-    if (!wallet.isConnected) return;
+    if (!isCasperConnected) return;
 
     try {
-      // Stellar doesn't use chain IDs - just check if wallet is connected
+      // Check if connected to Casper Testnet
       setIsOnCorrectNetwork(true);
     } catch (error) {
       setIsOnCorrectNetwork(false);
     }
-  }, [wallet.isConnected]);
+  }, [isCasperConnected]);
 
   const checkContractPauseStatus = useCallback(async () => {
     try {
-      const { contractService } = await import("@/lib/web3/contract-service");
-      const paused = await contractService.isJobCreationPaused();
-      setIsContractPaused(paused);
+      // TODO: Implement Casper pause check
+      setIsContractPaused(false);
     } catch (error) {
       setIsContractPaused(false);
     }
@@ -76,7 +70,7 @@ export default function CreateEscrowPage() {
   useEffect(() => {
     checkContractPauseStatus();
     checkNetworkStatus();
-  }, [wallet.chainId, checkContractPauseStatus, checkNetworkStatus]);
+  }, [checkContractPauseStatus, checkNetworkStatus]);
 
   const [formData, setFormData] = useState({
     projectTitle: "",
@@ -84,7 +78,7 @@ export default function CreateEscrowPage() {
     duration: "",
     totalBudget: "",
     beneficiary: "",
-    token: "", // Stellar: use empty string for native XLM, or contract address for tokens
+    token: "", // Use empty string for native CSPR, or contract hash for tokens
     useNativeToken: false,
     isOpenJob: false,
     milestones: [
@@ -141,26 +135,26 @@ export default function CreateEscrowPage() {
       if (
         !formData.isOpenJob &&
         (!formData.beneficiary ||
-          (casper.isConnected
-            ? !/^(hash-|account-hash-)?[0-9a-fA-F]{64}$/.test(formData.beneficiary)
-            : !/^G[A-Z0-9]{55}$/.test(formData.beneficiary)))
+          (isCasperConnected
+            ? !/^(01|02)[0-9a-fA-F]{64}$/.test(formData.beneficiary)
+            : false))
       ) {
-        newErrors.beneficiary = casper.isConnected
-          ? "Valid Casper address (hex) is required"
-          : "Valid Stellar address (G...) is required";
+        newErrors.beneficiary = isCasperConnected
+          ? "Valid Casper public key (01/02 + hex) is required"
+          : "Valid address is required";
         hasErrors = true;
       }
 
       if (
         !formData.useNativeToken &&
         (!formData.token ||
-          (casper.isConnected
+          (isCasperConnected
             ? !/^(hash-|account-hash-)?[0-9a-fA-F]{64}$/.test(formData.token)
-            : !/^C[A-Z0-9]{55}$/.test(formData.token)))
+            : false))
       ) {
-        newErrors.tokenAddress = casper.isConnected
-          ? "Valid Casper token address (hash-...) is required"
-          : "Valid Stellar token address (C...) is required";
+        newErrors.tokenAddress = isCasperConnected
+          ? "Valid Casper token hash is required"
+          : "Valid token address is required";
         hasErrors = true;
       }
     } else if (step === 2) {
@@ -230,15 +224,13 @@ export default function CreateEscrowPage() {
     if (!formData.isOpenJob) {
       if (!formData.beneficiary) {
         errors.push("Beneficiary address is required for direct escrow");
-      } else if (casper.isConnected) {
+      } else if (isCasperConnected) {
          // Casper address validation
-         if (!/^[0-9a-fA-F]+$/.test(formData.beneficiary) || formData.beneficiary.length < 60) {
-            errors.push("Beneficiary address must be a valid Casper Public Key (Hex)");
+         if (!/^(01|02)[0-9a-fA-F]{64}$/.test(formData.beneficiary)) {
+            errors.push("Beneficiary address must be a valid Casper Public Key (starts with 01 or 02 followed by 64 hex chars)");
          }
-      } else if (!/^G[A-Z0-9]{55}$/.test(formData.beneficiary)) {
-        errors.push(
-          "Beneficiary address must be a valid Stellar address (starts with G)"
-        );
+      } else {
+        errors.push("Wallet not connected");
       }
     }
 
@@ -275,7 +267,7 @@ export default function CreateEscrowPage() {
     console.log("=== handleSubmit STARTED ===");
     
     // CASPER PATH
-    if (casper.isConnected) {
+    if (isCasperConnected) {
         const validationErrors = validateForm();
         if (validationErrors.length > 0) {
             toast({
@@ -311,162 +303,17 @@ export default function CreateEscrowPage() {
         return;
     }
 
-    // STELLAR PATH
-    console.log("Wallet state:", {
-      isConnected: wallet.isConnected,
-      address: wallet.address,
+    toast({
+      title: "Wallet not connected",
+      description: "Please connect your Casper wallet to create an escrow",
+      variant: "destructive",
     });
-
-    if (!wallet.isConnected) {
-      toast({
-        title: "Wallet not connected",
-        description: "Please connect your wallet to create an escrow",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate form
-    const validationErrors = validateForm();
-    if (validationErrors.length > 0) {
-      toast({
-        title: "Form validation failed",
-        description: validationErrors.join(", "),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // For native XLM, token can be empty string or null
-    // For custom tokens, token should be set
-    // This check is not needed - the contract handles both cases
-    console.log("Token check:", {
-      useNativeToken: formData.useNativeToken,
-      token: formData.token,
-    });
-
-    setIsSubmitting(true);
-
-    try {
-      console.log("handleSubmit called", {
-        walletConnected: wallet.isConnected,
-        walletAddress: wallet.address,
-        formData,
-      });
-
-      // Stellar: Handle token approval if using a custom token (not native XLM)
-      if (
-        formData.token &&
-        formData.token !== "" &&
-        formData.token !==
-          GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF
-      ) {
-        // For Stellar, token approval is handled differently
-        // The contract will handle token transfers internally
-        // We just need to verify the token contract exists
-        // Token approval is handled by the contract for Stellar
-        // No need to check token contract here
-      }
-
-      const milestoneDescriptions = formData.milestones.map(
-        (m) => m.description
-      );
-
-      // Stellar: Use null for open jobs (Option<Address>)
-      const beneficiaryAddress = formData.isOpenJob
-        ? null // null for open jobs
-        : formData.beneficiary || null;
-
-      // Stellar: Convert XLM to stroops (1 XLM = 10,000,000 stroops)
-      // For Stellar, we use stroops instead of wei
-      const STROOPS_PER_XLM = 10_000_000;
-      const totalAmountInStroops = BigInt(
-        Math.floor(Number.parseFloat(formData.totalBudget) * STROOPS_PER_XLM)
-      );
-
-      // Check native XLM balance using wallet balance
-      // For native XLM (useNativeToken = true), token will be empty or null
-      if (formData.useNativeToken || !formData.token || formData.token === "") {
-        const walletBalance = Number.parseFloat(wallet.balance || "0");
-        const requiredBalance = Number.parseFloat(formData.totalBudget);
-        console.log("Balance check:", {
-          walletBalance,
-          requiredBalance,
-          hasEnough: walletBalance >= requiredBalance,
-        });
-        if (walletBalance < requiredBalance) {
-          throw new Error(
-            `Insufficient XLM balance. You have ${walletBalance.toFixed(4)} XLM but need ${formData.totalBudget} XLM.`
-          );
-        }
-      }
-
-      // Convert milestone amounts to stroops (Stellar uses stroops, not wei)
-      const milestoneAmountsInStroops = formData.milestones.map((m) =>
-        BigInt(Math.floor(Number.parseFloat(m.amount) * STROOPS_PER_XLM))
-      );
-
-      // Default arbiter - use a Stellar address (you should replace this with a real arbiter address)
-      // For now, use a default arbiter address - in production, this should come from formData or be configurable
-      const arbiters = [
-        "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
-      ]; // Default arbiter - replace with real arbiter address
-      const requiredConfirmations = 1;
-
-      // Convert duration from days to seconds
-      const durationInSeconds = Number(formData.duration) * 24 * 60 * 60;
-
-      // Convert milestones to [amount, description] format for the hook
-      const milestones = milestoneAmountsInStroops.map(
-        (amount, idx) =>
-          [amount.toString(), milestoneDescriptions[idx] || ""] as [
-            string,
-            string,
-          ]
-      );
-
-      // Use the useCreateEscrow hook
-      if (!wallet.address) {
-        throw new Error("Wallet not connected");
-      }
-
-      const escrowId = await createEscrow.mutateAsync({
-        depositor: wallet.address,
-        beneficiary: beneficiaryAddress || undefined,
-        arbiters,
-        required_confirmations: requiredConfirmations,
-        milestones,
-        token:
-          formData.useNativeToken || !formData.token || formData.token === ""
-            ? undefined
-            : formData.token,
-        total_amount: totalAmountInStroops.toString(),
-        duration: durationInSeconds,
-        project_title: formData.projectTitle,
-        project_description: formData.projectDescription,
-      });
-
-      console.log("Escrow created successfully, ID:", escrowId);
-      console.log(
-        "Check the browser console for transaction hash and StellarExpert link"
-      );
-
-      // Navigate after successful creation
-      setTimeout(() => {
-        navigate(formData.isOpenJob ? "/jobs" : "/dashboard");
-      }, 2000);
-    } catch (error: any) {
-      console.error("Error creating escrow:", error);
-      // Error toast is handled by the useCreateEscrow hook
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   return (
     <div className="min-h-screen py-12 gradient-mesh">
       {/* Network Switch Banner */}
-      {!isOnCorrectNetwork && wallet.isConnected && (
+      {!isOnCorrectNetwork && isCasperConnected && (
         <div className="container mx-auto px-4 max-w-4xl mb-6">
           <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
             <div className="flex items-center justify-between">
@@ -477,7 +324,7 @@ export default function CreateEscrowPage() {
                     Wrong Network
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Please connect to Stellar Testnet to create escrows
+                    Please connect to Casper Testnet to create escrows
                   </p>
                 </div>
               </div>
