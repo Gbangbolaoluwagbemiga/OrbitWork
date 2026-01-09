@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Server, Api } from "@stellar/stellar-sdk/rpc";
 import { xdr } from "@stellar/stellar-sdk";
-import { rpcUrl, stellarNetwork } from "../contracts/util";
+import { rpcUrl, stellarNetwork } from "../util/stellar-constants";
 
 /**
  * Concatenated `${contractId}:${topic}`

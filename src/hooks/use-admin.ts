@@ -5,7 +5,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { contractService } from "@/lib/web3/contract-service";
 import { toast } from "@/hooks/use-toast";
-import { useWeb3 } from "@/contexts/web3-context";
+import { useWeb3 } from "@/hooks/use-web3";
 
 /**
  * Hook to pause job creation

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useWeb3 } from "@/contexts/web3-context";
+import { useWeb3 } from "@/hooks/use-web3";
 import { useDelegation } from "@/contexts/delegation-context";
 import { CONTRACTS } from "@/lib/web3/config";
 import { contractService } from "@/lib/web3/contract-service";

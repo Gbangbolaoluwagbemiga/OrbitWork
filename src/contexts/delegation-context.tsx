@@ -112,7 +112,7 @@ export function DelegationProvider({ children }: { children: ReactNode }) {
       }
 
       const delegation: Delegation = {
-        id: `delegation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `delegation_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         delegator: wallet.address!,
         delegatee,
         functions,
@@ -209,7 +209,7 @@ export function DelegationProvider({ children }: { children: ReactNode }) {
       );
 
       // Simulate gasless execution - no MetaMask, no blockchain, no gas fees
-      const txHash = "0x" + Math.random().toString(16).substr(2, 64);
+      const txHash = "0x" + Math.random().toString(16).substring(2);
 
       console.log("TRULY gasless delegation executed:", txHash);
 

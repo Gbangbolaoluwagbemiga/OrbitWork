@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useWeb3 } from "@/contexts/web3-context";
+import { useWeb3 } from "@/hooks/use-web3";
 import { CONTRACTS } from "@/lib/web3/config";
 import { ContractService } from "@/lib/web3/contract-service";
 
