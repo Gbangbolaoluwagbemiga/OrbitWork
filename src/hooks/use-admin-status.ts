@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useWeb3 } from "@/hooks/use-web3";
+import { useCasper } from "@/contexts/casper-context";
 import { useDelegation } from "@/contexts/delegation-context";
 import { CONTRACTS } from "@/lib/web3/config";
 import { contractService } from "@/lib/web3/contract-service";
 
 export function useAdminStatus() {
   const { wallet, getContract } = useWeb3();
+  const { address: casperAddress, isConnected: isCasperConnected } = useCasper();
   const { getActiveDelegations, delegations } = useDelegation();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
@@ -13,7 +15,10 @@ export function useAdminStatus() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!wallet.isConnected || !wallet.address) {
+    if (
+      (!wallet.isConnected || !wallet.address) &&
+      (!isCasperConnected || !casperAddress)
+    ) {
       setIsAdmin(false);
       setIsOwner(false);
       setIsArbiter(false);
@@ -21,82 +26,90 @@ export function useAdminStatus() {
     }
 
     checkAdminStatus();
-  }, [wallet.isConnected, wallet.address, delegations.length]);
+  }, [
+    wallet.isConnected,
+    wallet.address,
+    isCasperConnected,
+    casperAddress,
+    delegations.length,
+  ]);
 
   const checkAdminStatus = async () => {
     setLoading(true);
     try {
-      // Check if contract address is set
-      if (!CONTRACTS.SECUREFLOW_ESCROW) {
-        console.warn("SECUREFLOW_ESCROW contract address not set");
-        setIsAdmin(false);
-        setIsOwner(false);
-        setIsArbiter(false);
+      // Determine active address
+      const currentAddress =
+        isCasperConnected && casperAddress ? casperAddress : wallet.address;
+
+      if (!currentAddress) {
         return;
       }
 
-      const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
-      if (!contract) {
-        console.warn("Failed to get contract instance");
-        setIsAdmin(false);
-        setIsOwner(false);
-        setIsArbiter(false);
+      // 1. Check against environment variable (Works for both Stellar and Casper)
+      const envOwner = import.meta.env.VITE_OWNER_ADDRESS || "";
+      if (
+        envOwner &&
+        currentAddress.toLowerCase().trim() === envOwner.toLowerCase().trim()
+      ) {
+        console.log("Admin access granted via VITE_OWNER_ADDRESS");
+        setIsOwner(true);
+        setIsAdmin(true);
+        // We can return here, or continue to check other roles.
+        // For now, if you are owner, you are admin.
         return;
       }
 
-      // Get the contract owner
-      const owner = await contract.call("owner");
-      console.log("Contract owner:", owner, typeof owner);
-      console.log("Wallet address:", wallet.address, typeof wallet.address);
-
-      if (!owner) {
-        console.warn("Owner not found in contract");
-        setIsAdmin(false);
-        setIsOwner(false);
-        setIsArbiter(false);
-        return;
-      }
-
-      // Normalize both addresses to strings and lowercase for comparison
-      const ownerStr = String(owner).toLowerCase().trim();
-      const walletStr = (wallet.address || "").toLowerCase().trim();
-
-      console.log("Owner (normalized):", ownerStr);
-      console.log("Wallet (normalized):", walletStr);
-
-      // Check if current wallet is the owner
-      const ownerCheck = ownerStr === walletStr;
-      setIsOwner(ownerCheck);
-      console.log("Is owner:", ownerCheck);
-
-      // Check if user is an authorized arbiter
-      let arbiterCheck = false;
-      if (wallet.address) {
-        try {
-          arbiterCheck = await contractService.isAuthorizedArbiter(
-            wallet.address
-          );
-          console.log("Is arbiter:", arbiterCheck);
-        } catch (error) {
-          console.error("Error checking arbiter status:", error);
+      // 2. If using Stellar, check contract state
+      if (wallet.isConnected && wallet.address) {
+        // Check if contract address is set
+        if (!CONTRACTS.SECUREFLOW_ESCROW) {
+          console.warn("SECUREFLOW_ESCROW contract address not set");
+          // Don't reset here, as env check might have passed
+          return;
         }
+
+        const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
+        if (!contract) {
+          console.warn("Failed to get contract instance");
+          return;
+        }
+
+        // Get the contract owner
+        const owner = await contract.call("owner");
+        
+        if (owner) {
+          const ownerStr = String(owner).toLowerCase().trim();
+          const walletStr = currentAddress.toLowerCase().trim();
+          
+          if (ownerStr === walletStr) {
+             setIsOwner(true);
+             setIsAdmin(true);
+             return;
+          }
+        }
+      }
+
+      // 3. Check arbiter status (Stellar only for now)
+      let arbiterCheck = false;
+      if (wallet.isConnected && wallet.address) {
+         // ... existing arbiter logic
+         try {
+           arbiterCheck = await contractService.isAuthorizedArbiter(wallet.address);
+         } catch(e) { console.error(e); }
       }
       setIsArbiter(arbiterCheck);
 
-      // Also check if user has an active delegation granted TO their address
+      // 4. Delegation check
       const activeDelegations = getActiveDelegations();
       const hasDelegationForUser = activeDelegations.some(
-        (d) => d.delegatee.toLowerCase() === wallet.address?.toLowerCase()
+        (d) => d.delegatee.toLowerCase() === currentAddress.toLowerCase()
       );
-      console.log("Has delegation:", hasDelegationForUser);
 
-      // User is admin if they are owner, arbiter, or have delegation
-      setIsAdmin(ownerCheck || arbiterCheck || hasDelegationForUser);
+      setIsAdmin(isOwner || arbiterCheck || hasDelegationForUser);
+
     } catch (error) {
       console.error("Error checking admin status:", error);
-      setIsAdmin(false);
-      setIsOwner(false);
-      setIsArbiter(false);
+      // Don't forcefully reset if we already found them to be owner via Env
     } finally {
       setLoading(false);
     }

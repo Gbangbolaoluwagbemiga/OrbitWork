@@ -64,7 +64,13 @@ export async function getCasperBalance(publicKeyHex: string): Promise<string> {
     console.log("Fetched Casper Balance:", csprBalance);
     return csprBalance;
   } catch (error) {
-    console.error("Failed to get balance for key:", publicKeyHex, error);
+    console.error("Failed to get balance for key:", publicKeyHex);
+    if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+    } else {
+        console.error("Unknown error:", error);
+    }
     return "0";
   }
 }

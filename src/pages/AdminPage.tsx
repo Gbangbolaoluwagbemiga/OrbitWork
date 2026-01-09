@@ -19,6 +19,7 @@ import {
 } from "@/hooks/use-admin";
 import { contractService } from "@/lib/web3/contract-service";
 import { useWeb3 } from "@/hooks/use-web3";
+import { useCasper } from "@/contexts/casper-context";
 
 // Unused imports removed: AdminHeader, AdminStats, ContractControls, AdminLoading
 import { DisputeResolution } from "@/components/admin/dispute-resolution";
@@ -40,6 +41,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function AdminPage() {
   const { wallet, getContract } = useWeb3();
+  const { isConnected: isCasperConnected } = useCasper();
   const {
     isAdmin,
     isOwner,
@@ -148,12 +150,12 @@ export default function AdminPage() {
   }, [wallet.address]);
 
   useEffect(() => {
-    if (wallet.isConnected && wallet.address) {
+    if ((wallet.isConnected && wallet.address) || isCasperConnected) {
       checkPausedStatus();
       fetchContractOwner();
       fetchContractStats();
     }
-  }, [wallet.isConnected, wallet.address, checkPausedStatus, fetchContractOwner, fetchContractStats]);
+  }, [wallet.isConnected, wallet.address, isCasperConnected, checkPausedStatus, fetchContractOwner, fetchContractStats]);
 
   const openDialog = (type: typeof actionType) => {
     setActionType(type);
@@ -360,7 +362,7 @@ export default function AdminPage() {
     }
   };
 
-  if (!wallet.isConnected || !wallet.address) {
+  if ((!wallet.isConnected || !wallet.address) && !isCasperConnected) {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-mesh">
         <Card className="glass border-primary/20 p-12 text-center max-w-md">
