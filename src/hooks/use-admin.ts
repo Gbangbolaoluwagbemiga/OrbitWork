@@ -6,6 +6,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { contractService } from "@/lib/web3/contract-service";
 import { toast } from "@/hooks/use-toast";
 import { useWeb3 } from "@/hooks/use-web3";
+import { useCasper } from "@/contexts/casper-context";
+import { signDeploy, sendDeploy } from "@/lib/casper/casper-wallet";
+import { pauseJobCreationDeploy, unpauseJobCreationDeploy } from "@/lib/casper/contracts";
 
 /**
  * Hook to pause job creation
@@ -13,9 +16,18 @@ import { useWeb3 } from "@/hooks/use-web3";
 export function usePauseJobCreation() {
   const queryClient = useQueryClient();
   const { wallet } = useWeb3();
+  const { isConnected: isCasperConnected, address: casperAddress } = useCasper();
 
   return useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
+      if (isCasperConnected && casperAddress) {
+         // Casper implementation
+         const deploy = pauseJobCreationDeploy(casperAddress);
+         const signedDeploy = await signDeploy(deploy, casperAddress);
+         if (!signedDeploy) throw new Error("Failed to sign deploy");
+         return await sendDeploy(signedDeploy);
+      }
+      
       if (!wallet.address) {
         throw new Error("Wallet not connected");
       }
@@ -44,9 +56,18 @@ export function usePauseJobCreation() {
 export function useUnpauseJobCreation() {
   const queryClient = useQueryClient();
   const { wallet } = useWeb3();
+  const { isConnected: isCasperConnected, address: casperAddress } = useCasper();
 
   return useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
+      if (isCasperConnected && casperAddress) {
+         // Casper implementation
+         const deploy = unpauseJobCreationDeploy(casperAddress);
+         const signedDeploy = await signDeploy(deploy, casperAddress);
+         if (!signedDeploy) throw new Error("Failed to sign deploy");
+         return await sendDeploy(signedDeploy);
+      }
+
       if (!wallet.address) {
         throw new Error("Wallet not connected");
       }

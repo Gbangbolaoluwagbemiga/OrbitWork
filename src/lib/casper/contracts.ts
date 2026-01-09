@@ -1,14 +1,12 @@
 import {
   Deploy,
-  DeployHeader,
   ExecutableDeployItem,
   StoredContractByHash,
   Args,
-  PublicKey,
   CLValue,
-  CLTypeU256,
-  CLTypeString,
-  CLTypeU64
+  PublicKey,
+  DeployHeader,
+  ContractHash
 } from "casper-js-sdk";
 import { DEFAULT_NETWORK } from "./casper-config";
 
@@ -35,44 +33,39 @@ export function createEscrowDeploy(
   const totalAmountMotes = (parseFloat(params.totalAmount) * 1_000_000_000).toString();
   
   const milestoneAmounts = params.milestones.map(m => 
-    CLValue.u256((parseFloat(m.amount) * 1_000_000_000).toString())
+    CLValue.newCLUInt256((parseFloat(m.amount) * 1_000_000_000).toString())
   );
   const milestoneDescriptions = params.milestones.map(m => 
-    CLValue.string(m.description)
+    CLValue.newCLString(m.description)
   );
 
-  const contractHashAsByteArray = Uint8Array.from(
-    Buffer.from(SECUREFLOW_CONTRACT_HASH.replace("hash-", ""), "hex")
-  );
+  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH);
 
   const args = Args.fromMap({
-    "project_title": CLValue.string(params.projectTitle),
-    "project_description": CLValue.string(params.projectDescription),
-    "total_amount": CLValue.u256(totalAmountMotes),
-    "duration": CLValue.u64(params.duration),
-    "milestone_amounts": CLValue.list(milestoneAmounts, new CLTypeU256()),
-    "milestone_descriptions": CLValue.list(milestoneDescriptions, new CLTypeString()),
+    "project_title": CLValue.newCLString(params.projectTitle),
+    "project_description": CLValue.newCLString(params.projectDescription),
+    "total_amount": CLValue.newCLUInt256(totalAmountMotes),
+    "duration": CLValue.newCLUint64(params.duration),
+    "milestone_amounts": CLValue.newCLList(milestoneAmounts.length > 0 ? milestoneAmounts[0].type : CLValue.newCLUInt256(0).type, milestoneAmounts),
+    "milestone_descriptions": CLValue.newCLList(milestoneDescriptions.length > 0 ? milestoneDescriptions[0].type : CLValue.newCLString("").type, milestoneDescriptions),
   });
 
   const session = new ExecutableDeployItem();
   session.storedContractByHash = new StoredContractByHash(
-    contractHashAsByteArray,
+    contractHash,
     "create_escrow",
     args
   );
 
-  const payment = ExecutableDeployItem.standardPayment(10_000_000_000); // 10 CSPR
+  const payment = ExecutableDeployItem.standardPayment("10000000000"); // 10 CSPR
 
-  const header = new DeployHeader(
-    chainName,
-    [], // dependencies
-    1, // gasPrice
-    undefined, // timestamp
-    undefined, // ttl
-    senderPublicKey
+  const header = new DeployHeader(chainName, [], undefined, undefined, undefined, senderPublicKey);
+
+  return Deploy.makeDeploy(
+    header,
+    payment,
+    session
   );
-
-  return Deploy.makeDeploy(header, payment, session);
 }
 
 export interface ApplyToJobParams {
@@ -88,35 +81,87 @@ export function applyToJobDeploy(
 ): Deploy {
   const senderPublicKey = PublicKey.fromHex(senderPublicKeyHex);
 
-  const contractHashAsByteArray = Uint8Array.from(
-    Buffer.from(SECUREFLOW_CONTRACT_HASH.replace("hash-", ""), "hex")
-  );
+  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH);
 
   const args = Args.fromMap({
-    "escrow_id": CLValue.u32(params.escrowId),
-    "cover_letter": CLValue.string(params.coverLetter),
-    "proposed_timeline": CLValue.u32(params.proposedTimeline),
+    "escrow_id": CLValue.newCLUInt32(params.escrowId),
+    "cover_letter": CLValue.newCLString(params.coverLetter),
+    "proposed_timeline": CLValue.newCLUInt32(params.proposedTimeline),
   });
 
   const session = new ExecutableDeployItem();
   session.storedContractByHash = new StoredContractByHash(
-    contractHashAsByteArray,
+    contractHash,
     "apply_to_job",
     args
   );
 
-  const payment = ExecutableDeployItem.standardPayment(5_000_000_000); // 5 CSPR
+  const payment = ExecutableDeployItem.standardPayment("5000000000"); // 5 CSPR
 
-  const header = new DeployHeader(
-    chainName,
-    [],
-    1,
-    undefined,
-    undefined,
-    senderPublicKey
+  const header = new DeployHeader(chainName, [], undefined, undefined, undefined, senderPublicKey);
+
+  return Deploy.makeDeploy(
+    header,
+    payment,
+    session
+  );
+}
+
+export function pauseJobCreationDeploy(
+  senderPublicKeyHex: string,
+  chainName: string = DEFAULT_NETWORK.chainName
+): Deploy {
+  const senderPublicKey = PublicKey.fromHex(senderPublicKeyHex);
+
+  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH);
+
+  // Assuming the entry point is named "pause_job_creation" taking no args
+  const args = Args.fromMap({});
+
+  const session = new ExecutableDeployItem();
+  session.storedContractByHash = new StoredContractByHash(
+    contractHash,
+    "pause_job_creation",
+    args
   );
 
-  return Deploy.makeDeploy(header, payment, session);
+  const payment = ExecutableDeployItem.standardPayment("1000000000"); // 1 CSPR
+
+  const header = new DeployHeader(chainName, [], undefined, undefined, undefined, senderPublicKey);
+
+  return Deploy.makeDeploy(
+    header,
+    payment,
+    session
+  );
+}
+
+export function unpauseJobCreationDeploy(
+  senderPublicKeyHex: string,
+  chainName: string = DEFAULT_NETWORK.chainName
+): Deploy {
+  const senderPublicKey = PublicKey.fromHex(senderPublicKeyHex);
+
+  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH);
+
+  const args = Args.fromMap({});
+
+  const session = new ExecutableDeployItem();
+  session.storedContractByHash = new StoredContractByHash(
+    contractHash,
+    "unpause_job_creation",
+    args
+  );
+
+  const payment = ExecutableDeployItem.standardPayment("1000000000"); // 1 CSPR
+
+  const header = new DeployHeader(chainName, [], undefined, undefined, undefined, senderPublicKey);
+
+  return Deploy.makeDeploy(
+    header,
+    payment,
+    session
+  );
 }
 
 export async function fetchEscrows() {

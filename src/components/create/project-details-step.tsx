@@ -4,6 +4,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCasper } from "@/contexts/casper-context";
+import { CASPER_TESTNET_TOKENS } from "@/config/casper-tokens";
 
 interface ProjectDetailsStepProps {
   formData: {
@@ -34,6 +37,8 @@ export function ProjectDetailsStep({
   isContractPaused,
   errors = {} as ProjectDetailsStepProps["errors"],
 }: ProjectDetailsStepProps) {
+  const { isConnected: isCasperConnected } = useCasper();
+
   return (
     <Card className="glass border-primary/20 p-6">
       <CardHeader>
@@ -198,27 +203,59 @@ export function ProjectDetailsStep({
               <Label htmlFor="tokenAddress" className="mb-2 block">
                 Token Address *
               </Label>
-              <Input
-                id="tokenAddress"
-                value={formData.token}
-                onChange={(e) => onUpdate({ token: e.target.value })}
-                placeholder="C..."
-                required={!formData.useNativeToken}
-                pattern="^C[A-Z0-9]{55}$"
-                className={
-                  errors?.tokenAddress
-                    ? "border-red-500 focus:border-red-500"
-                    : ""
-                }
-              />
+              {isCasperConnected ? (
+                <div className="space-y-2">
+                  <Select 
+                    value={CASPER_TESTNET_TOKENS.some(t => t.address === formData.token) ? formData.token : "custom"} 
+                    onValueChange={(val) => {
+                      if (val !== "custom") onUpdate({ token: val });
+                      else onUpdate({ token: "" }); // Reset if custom selected to allow typing
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a whitelisted token" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CASPER_TESTNET_TOKENS.map((t) => (
+                        <SelectItem key={t.address} value={t.address}>
+                          {t.name} ({t.symbol})
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="custom">Custom Address</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {(!CASPER_TESTNET_TOKENS.some(t => t.address === formData.token) || formData.token === "") && (
+                     <Input
+                        id="tokenAddress"
+                        value={formData.token}
+                        onChange={(e) => onUpdate({ token: e.target.value })}
+                        placeholder="hash-..."
+                        required
+                        className={
+                          errors?.tokenAddress ? "border-red-500 focus:border-red-500" : ""
+                        }
+                      />
+                  )}
+                </div>
+              ) : (
+                <Input
+                  id="tokenAddress"
+                  value={formData.token}
+                  onChange={(e) => onUpdate({ token: e.target.value })}
+                  placeholder="C..."
+                  required
+                  className={
+                    errors?.tokenAddress ? "border-red-500 focus:border-red-500" : ""
+                  }
+                />
+              )}
               {errors?.tokenAddress ? (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.tokenAddress}
-                </p>
+                <p className="text-red-500 text-sm mt-1">{errors.tokenAddress}</p>
               ) : (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Enter the contract address of your Soroban token deployed on
-                  Stellar Testnet. Default: Native XLM token
+                  {isCasperConnected 
+                    ? "Enter the contract hash of your CEP-18 token" 
+                    : "Enter the contract address of your Soroban token deployed on Stellar Testnet"}
                 </p>
               )}
             </div>

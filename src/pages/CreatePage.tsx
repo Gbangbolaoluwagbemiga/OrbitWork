@@ -141,19 +141,26 @@ export default function CreateEscrowPage() {
       if (
         !formData.isOpenJob &&
         (!formData.beneficiary ||
-          !/^0x[a-fA-F0-9]{40}$/.test(formData.beneficiary))
+          (casper.isConnected
+            ? !/^(hash-|account-hash-)?[0-9a-fA-F]{64}$/.test(formData.beneficiary)
+            : !/^G[A-Z0-9]{55}$/.test(formData.beneficiary)))
       ) {
-        newErrors.beneficiary =
-          "Valid beneficiary address is required for direct escrow";
+        newErrors.beneficiary = casper.isConnected
+          ? "Valid Casper address (hex) is required"
+          : "Valid Stellar address (G...) is required";
         hasErrors = true;
       }
 
       if (
         !formData.useNativeToken &&
-        (!formData.token || !/^0x[a-fA-F0-9]{40}$/.test(formData.token))
+        (!formData.token ||
+          (casper.isConnected
+            ? !/^(hash-|account-hash-)?[0-9a-fA-F]{64}$/.test(formData.token)
+            : !/^C[A-Z0-9]{55}$/.test(formData.token)))
       ) {
-        newErrors.tokenAddress =
-          "Valid token address is required for custom ERC20 tokens";
+        newErrors.tokenAddress = casper.isConnected
+          ? "Valid Casper token address (hash-...) is required"
+          : "Valid Stellar token address (C...) is required";
         hasErrors = true;
       }
     } else if (step === 2) {

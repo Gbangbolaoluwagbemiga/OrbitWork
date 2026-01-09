@@ -1,4 +1,4 @@
-import { RpcClient, HttpHandler, PurseIdentifier, PublicKey } from "casper-js-sdk";
+import { RpcClient, HttpHandler, PurseIdentifier, PublicKey, Deploy } from "casper-js-sdk";
 import { DEFAULT_NETWORK } from "./casper-config";
 
 // Interface for Casper Wallet extension
@@ -21,6 +21,46 @@ declare global {
       requestConnection: () => Promise<boolean>;
       getActivePublicKey: () => Promise<string>;
     };
+  }
+}
+
+export async function signDeploy(deploy: Deploy, publicKeyHex: string): Promise<Deploy | null> {
+  try {
+      const provider = window.CasperWalletProvider?.() || window.casperlabsHelper;
+      if (!provider) return null;
+
+      const deployJson = Deploy.toJSON(deploy);
+      const signedJson = await provider.sign(JSON.stringify(deployJson), publicKeyHex);
+      
+      let signedDeploy: Deploy;
+      if (typeof signedJson === 'string') {
+          // If it returns a string (Casper Wallet), parse it
+          const parsed = JSON.parse(signedJson);
+          // If it's wrapped in { deploy: ... }, extract it
+          const deployData = parsed.deploy || parsed;
+          signedDeploy = Deploy.fromJSON(deployData);
+      } else {
+          // Legacy support
+          signedDeploy = Deploy.fromJSON(signedJson);
+      }
+      
+      return signedDeploy;
+  } catch (error) {
+      console.error("Error signing deploy:", error);
+      return null;
+  }
+}
+
+export async function sendDeploy(deploy: Deploy): Promise<string> {
+  try {
+      const httpHandler = new HttpHandler(DEFAULT_NETWORK.nodeUrl);
+      const client = new RpcClient(httpHandler);
+      
+      const result = await client.putDeploy(deploy);
+      return typeof result === 'string' ? result : (result as any).deploy_hash;
+  } catch (error) {
+      console.error("Error sending deploy:", error);
+      throw error;
   }
 }
 
