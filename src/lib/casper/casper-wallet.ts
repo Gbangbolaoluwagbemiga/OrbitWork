@@ -53,16 +53,18 @@ export async function getCasperBalance(publicKeyHex: string): Promise<string> {
     
     const publicKey = PublicKey.fromHex(publicKeyHex);
     
-    // queryLatestBalance returns BigNumber
-    const balance = await client.queryLatestBalance(
+    // queryLatestBalance returns QueryBalanceResult which contains CLValueUInt512
+    const result = await client.queryLatestBalance(
       PurseIdentifier.fromPublicKey(publicKey)
     );
     
     // Convert motes to CSPR (1 CSPR = 1,000,000,000 motes)
-    // balance is a BigNumber from @ethersproject/bignumber (used internally by SDK)
-    return balance.div(1_000_000_000).toString();
+    // result.balance is CLValueUInt512, getValue() returns BigNumber
+    const csprBalance = result.balance.getValue().div(1_000_000_000).toString();
+    console.log("Fetched Casper Balance:", csprBalance);
+    return csprBalance;
   } catch (error) {
-    console.error("Failed to get balance:", error);
+    console.error("Failed to get balance for key:", publicKeyHex, error);
     return "0";
   }
 }
