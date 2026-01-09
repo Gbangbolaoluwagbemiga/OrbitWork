@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { useWeb3 } from "@/contexts/web3-context";
+import { useWeb3 } from "@/hooks/use-web3";
 import { useToast } from "@/hooks/use-toast";
 import { CONTRACTS } from "@/lib/web3/config";
 
@@ -37,6 +37,55 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
+const getStatusFromNumber = (status: number): string => {
+  switch (status) {
+    case 0:
+      return "pending";
+    case 1:
+      return "active";
+    case 2:
+      return "completed";
+    case 3:
+      return "disputed";
+    case 4:
+      return "active"; // Changed from "cancelled" to "active" for disputed escrows
+    default:
+      return "pending";
+  }
+};
+
+const calculateDaysLeft = (createdAt: number, duration: number): number => {
+  const now = Date.now();
+  // Duration is already in seconds from the contract, convert to milliseconds
+  const projectEndTime = createdAt + duration * 1000;
+  const daysLeft = Math.ceil((projectEndTime - now) / (24 * 60 * 60 * 1000));
+  return Math.max(0, daysLeft); // Don't show negative days
+};
+
+const getDaysLeftMessage = (
+  daysLeft: number
+): { text: string; color: string; bgColor: string } => {
+  if (daysLeft > 7) {
+    return {
+      text: `${daysLeft} days`,
+      color: "text-red-700 dark:text-red-400",
+      bgColor: "bg-red-50 dark:bg-red-900/20",
+    };
+  } else if (daysLeft > 0) {
+    return {
+      text: `${daysLeft} days`,
+      color: "text-orange-700 dark:text-orange-400",
+      bgColor: "bg-orange-50 dark:bg-orange-900/20",
+    };
+  } else {
+    return {
+      text: "Deadline passed",
+      color: "text-red-700 dark:text-red-400",
+      bgColor: "bg-red-100 dark:bg-red-900/30",
+    };
+  }
+};
+
 export default function DashboardPage() {
   const { wallet, getContract } = useWeb3();
   const { toast } = useToast();
@@ -60,103 +109,11 @@ export default function DashboardPage() {
     null
   );
 
-  const getStatusFromNumber = (status: number): string => {
-    switch (status) {
-      case 0:
-        return "pending";
-      case 1:
-        return "active";
-      case 2:
-        return "completed";
-      case 3:
-        return "disputed";
-      case 4:
-        return "active"; // Changed from "cancelled" to "active" for disputed escrows
-      default:
-        return "pending";
-    }
-  };
 
-  // Check if an escrow should be marked as terminated (has disputed or resolved milestones)
-  // const isEscrowTerminated = (escrow: Escrow): boolean => { // Unused
-  //   return escrow.milestones.some(
-  //     (milestone) =>
-  //       milestone.status === "disputed" ||
-  //       milestone.status === "rejected" ||
-  //       milestone.status === "resolved"
-  //   );
-  // };
 
-  // Check if all disputes have been resolved
-  // const hasAllDisputesResolved = (escrow: Escrow): boolean => { // Unused
-  //   const disputedMilestones = escrow.milestones.filter(
-  //     (milestone) => milestone.status === "disputed"
-  //   );
-  //   return (
-  //     disputedMilestones.length === 0 &&
-  //     escrow.milestones.some((milestone) => milestone.status === "resolved")
-  //   );
-  // };
 
-  const calculateDaysLeft = (createdAt: number, duration: number): number => {
-    const now = Date.now();
-    // Duration is already in seconds from the contract, convert to milliseconds
-    const projectEndTime = createdAt + duration * 1000;
-    const daysLeft = Math.ceil((projectEndTime - now) / (24 * 60 * 60 * 1000));
-    return Math.max(0, daysLeft); // Don't show negative days
-  };
 
-  const getDaysLeftMessage = (
-    daysLeft: number
-  ): { text: string; color: string; bgColor: string } => {
-    if (daysLeft > 7) {
-      return {
-        text: `${daysLeft} days`,
-        color: "text-red-700 dark:text-red-400",
-        bgColor: "bg-red-50 dark:bg-red-900/20",
-      };
-    } else if (daysLeft > 0) {
-      return {
-        text: `${daysLeft} days`,
-        color: "text-orange-700 dark:text-orange-400",
-        bgColor: "bg-orange-50 dark:bg-orange-900/20",
-      };
-    } else {
-      return {
-        text: "Deadline passed",
-        color: "text-red-700 dark:text-red-400",
-        bgColor: "bg-red-100 dark:bg-red-900/30",
-      };
-    }
-  };
-
-  useEffect(() => {
-    if (wallet.isConnected) {
-      fetchUserEscrows();
-    }
-  }, [wallet.isConnected]);
-
-  // Listen for escrow update events from MilestoneActions
-  useEffect(() => {
-    const handleEscrowUpdated = async () => {
-      // Wait a moment for blockchain state to update
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      // Refresh the escrow data without reloading the page
-      // Use manual refresh flag to prevent showing loading screen
-      fetchUserEscrows(true);
-    };
-
-    window.addEventListener("escrowUpdated", handleEscrowUpdated);
-    window.addEventListener("milestoneApproved", handleEscrowUpdated);
-
-    return () => {
-      window.removeEventListener("escrowUpdated", handleEscrowUpdated);
-      window.removeEventListener("milestoneApproved", handleEscrowUpdated);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const fetchUserEscrows = async (isManualRefresh = false) => {
+  const fetchUserEscrows = useCallback(async (isManualRefresh = false) => {
     // Use ref to get the most current escrows, not the stale closure value
     const previousEscrows = escrowsRef.current;
     const previousEscrowsCount = previousEscrows.length;
@@ -492,7 +449,7 @@ export default function DashboardPage() {
       console.error("[DashboardPage] Error fetching escrows:", error);
       // Don't clear existing escrows on error - preserve what we have
       // Only show toast if we don't have any escrows yet
-      if (escrows.length === 0) {
+      if (escrowsRef.current.length === 0) {
         toast({
           title: "Failed to load escrows",
           description: "Could not fetch your escrows from the blockchain",
@@ -509,7 +466,32 @@ export default function DashboardPage() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [wallet.isConnected, wallet.address, toast]);
+
+  useEffect(() => {
+    if (wallet.isConnected) {
+      fetchUserEscrows();
+    }
+  }, [wallet.isConnected, fetchUserEscrows]);
+
+  // Listen for escrow update events from MilestoneActions
+  useEffect(() => {
+    const handleEscrowUpdated = async () => {
+      // Wait a moment for blockchain state to update
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Refresh the escrow data without reloading the page
+      // Use manual refresh flag to prevent showing loading screen
+      fetchUserEscrows(true);
+    };
+
+    window.addEventListener("escrowUpdated", handleEscrowUpdated);
+    window.addEventListener("milestoneApproved", handleEscrowUpdated);
+
+    return () => {
+      window.removeEventListener("escrowUpdated", handleEscrowUpdated);
+      window.removeEventListener("milestoneApproved", handleEscrowUpdated);
+    };
+  }, [fetchUserEscrows]);
 
   const handleRefresh = () => {
     fetchUserEscrows(true);

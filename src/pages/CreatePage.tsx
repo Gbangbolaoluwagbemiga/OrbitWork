@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { useWeb3 } from "@/contexts/web3-context";
+import { useWeb3 } from "@/hooks/use-web3";
 import { useCasper } from "@/contexts/casper-context";
 import { useCasperEscrow } from "@/hooks/use-casper-escrow";
 // Unused import removed: useSmartAccount
@@ -50,12 +50,9 @@ export default function CreateEscrowPage() {
     totalMismatch?: string;
   }>({});
 
-  useEffect(() => {
-    checkContractPauseStatus();
-    checkNetworkStatus();
-  }, [wallet.chainId]);
 
-  const checkNetworkStatus = async () => {
+
+  const checkNetworkStatus = useCallback(async () => {
     if (!wallet.isConnected) return;
 
     try {
@@ -64,9 +61,9 @@ export default function CreateEscrowPage() {
     } catch (error) {
       setIsOnCorrectNetwork(false);
     }
-  };
+  }, [wallet.isConnected]);
 
-  const checkContractPauseStatus = async () => {
+  const checkContractPauseStatus = useCallback(async () => {
     try {
       const { contractService } = await import("@/lib/web3/contract-service");
       const paused = await contractService.isJobCreationPaused();
@@ -74,7 +71,12 @@ export default function CreateEscrowPage() {
     } catch (error) {
       setIsContractPaused(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkContractPauseStatus();
+    checkNetworkStatus();
+  }, [wallet.chainId, checkContractPauseStatus, checkNetworkStatus]);
 
   const [formData, setFormData] = useState({
     projectTitle: "",

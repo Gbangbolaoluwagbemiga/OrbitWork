@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { useWeb3 } from "@/contexts/web3-context";
+import { useWeb3 } from "@/hooks/use-web3";
 import { useCasper } from "@/contexts/casper-context";
 import { useCasperApply } from "@/hooks/use-casper-apply";
 import { useToast } from "@/hooks/use-toast";

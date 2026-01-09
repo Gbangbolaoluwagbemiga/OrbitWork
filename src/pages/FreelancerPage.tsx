@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useWeb3 } from "@/contexts/web3-context";
+import { useState, useEffect, useCallback } from "react";
+import { useWeb3 } from "@/hooks/use-web3";
 import { CONTRACTS } from "@/lib/web3/config";
 
 import {
@@ -89,6 +89,113 @@ interface Milestone {
   resolutionAmount?: string; // Amount paid to beneficiary in resolution (0 = client wins, >0 = freelancer wins)
 }
 
+const getStatusFromNumber = (
+  status: number
+): "pending" | "active" | "completed" | "disputed" => {
+  switch (status) {
+    case 0:
+      return "pending";
+    case 1:
+      return "active";
+    case 2:
+      return "completed";
+    case 3:
+      return "disputed";
+    case 4:
+      return "active"; // Map cancelled to active
+    default:
+      return "pending";
+  }
+};
+
+const getMilestoneStatusColor = (status: string) => {
+  switch (status) {
+    case "pending":
+      return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200";
+    case "submitted":
+      return "bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200";
+    case "approved":
+      return "bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200";
+    case "rejected":
+      return "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200";
+    case "disputed":
+      return "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200";
+    case "resolved":
+      return "bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200";
+    default:
+      return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200";
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case "pending":
+      return "bg-yellow-100 text-yellow-800";
+    case "inprogress":
+      return "bg-blue-100 text-blue-800";
+    case "released":
+      return "bg-green-100 text-green-800";
+    case "completed":
+      return "bg-green-100 text-green-800";
+    case "submitted":
+      return "bg-blue-100 text-blue-800";
+    case "approved":
+      return "bg-green-100 text-green-800";
+    case "terminated":
+      return "bg-gray-100 text-gray-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+};
+
+const formatAmount = (amount: string) => {
+  try {
+    const num = Number(amount) / 1e7;
+    if (isNaN(num) || num < 0) {
+      return "0.00";
+    }
+    return num.toFixed(2);
+  } catch (error) {
+    return "0.00";
+  }
+};
+
+const calculateDaysLeft = (createdAt: number, duration: number): number => {
+  const now = Date.now();
+  // Duration is already in seconds from the contract, convert to milliseconds
+  const projectEndTime = createdAt + duration * 1000;
+  const daysLeft = Math.ceil((projectEndTime - now) / (24 * 60 * 60 * 1000));
+  return Math.max(0, daysLeft); // Don't show negative days
+};
+
+const getDaysLeftMessage = (
+  daysLeft: number
+): { text: string; color: string; bgColor: string } => {
+  if (daysLeft > 7) {
+    return {
+      text: `${daysLeft} days`,
+      color: "text-red-700 dark:text-red-400",
+      bgColor: "bg-red-50 dark:bg-red-900/20",
+    };
+  } else if (daysLeft > 0) {
+    return {
+      text: `${daysLeft} days`,
+      color: "text-orange-700 dark:text-orange-400",
+      bgColor: "bg-orange-50 dark:bg-orange-900/20",
+    };
+  } else {
+    return {
+      text: "Deadline passed",
+      color: "text-red-700 dark:text-red-400",
+      bgColor: "bg-red-100 dark:bg-red-900/30",
+    };
+  }
+};
+
+const formatDate = (timestamp: number) => {
+  return new Date(timestamp).toLocaleDateString();
+};
+
 export default function FreelancerPage() {
   const { wallet, getContract } = useWeb3();
   const { addNotification, addCrossWalletNotification } = useNotifications();
@@ -139,59 +246,7 @@ export default function FreelancerPage() {
   >(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (wallet.isConnected) {
-      fetchFreelancerEscrows();
-    }
-  }, [wallet.isConnected]);
-
-  // Listen for escrow update events from milestone approvals
-  useEffect(() => {
-    const handleEscrowUpdated = async () => {
-      // Wait a moment for blockchain state to update
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      // Refresh the escrow data without reloading the page
-      fetchFreelancerEscrows();
-    };
-
-    window.addEventListener("escrowUpdated", handleEscrowUpdated);
-    window.addEventListener("milestoneApproved", handleEscrowUpdated);
-
-    return () => {
-      window.removeEventListener("escrowUpdated", handleEscrowUpdated);
-      window.removeEventListener("milestoneApproved", handleEscrowUpdated);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Listen for milestone submission events
-  useEffect(() => {
-    const handleMilestoneSubmitted = () => {
-      fetchFreelancerEscrows();
-    };
-
-    const handleMilestoneApproved = () => {
-      fetchFreelancerEscrows();
-    };
-
-    const handleMilestoneRejected = (_event: any) => {
-      fetchFreelancerEscrows();
-    };
-
-    window.addEventListener("milestoneSubmitted", handleMilestoneSubmitted);
-    window.addEventListener("milestoneApproved", handleMilestoneApproved);
-    window.addEventListener("milestoneRejected", handleMilestoneRejected);
-    return () => {
-      window.removeEventListener(
-        "milestoneSubmitted",
-        handleMilestoneSubmitted
-      );
-      window.removeEventListener("milestoneApproved", handleMilestoneApproved);
-      window.removeEventListener("milestoneRejected", handleMilestoneRejected);
-    };
-  }, []);
-
-  const fetchFreelancerEscrows = async (isManualRefresh = false) => {
+  const fetchFreelancerEscrows = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) {
       setIsRefreshing(true);
     } else {
@@ -504,7 +559,60 @@ export default function FreelancerPage() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [wallet.address, wallet.isConnected, toast]);
+
+  useEffect(() => {
+    if (wallet.isConnected) {
+      fetchFreelancerEscrows();
+    }
+  }, [wallet.isConnected]);
+
+  // Listen for escrow update events from milestone approvals
+  useEffect(() => {
+    const handleEscrowUpdated = async () => {
+      // Wait a moment for blockchain state to update
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Refresh the escrow data without reloading the page
+      fetchFreelancerEscrows();
+    };
+
+    window.addEventListener("escrowUpdated", handleEscrowUpdated);
+    window.addEventListener("milestoneApproved", handleEscrowUpdated);
+
+    return () => {
+      window.removeEventListener("escrowUpdated", handleEscrowUpdated);
+      window.removeEventListener("milestoneApproved", handleEscrowUpdated);
+    };
+  }, [fetchFreelancerEscrows]);
+
+  // Listen for milestone submission events
+  useEffect(() => {
+    const handleMilestoneSubmitted = () => {
+      fetchFreelancerEscrows();
+    };
+
+    const handleMilestoneApproved = () => {
+      fetchFreelancerEscrows();
+    };
+
+    const handleMilestoneRejected = (_event: any) => {
+      fetchFreelancerEscrows();
+    };
+
+    window.addEventListener("milestoneSubmitted", handleMilestoneSubmitted);
+    window.addEventListener("milestoneApproved", handleMilestoneApproved);
+    window.addEventListener("milestoneRejected", handleMilestoneRejected);
+    return () => {
+      window.removeEventListener(
+        "milestoneSubmitted",
+        handleMilestoneSubmitted
+      );
+      window.removeEventListener("milestoneApproved", handleMilestoneApproved);
+      window.removeEventListener("milestoneRejected", handleMilestoneRejected);
+    };
+  }, [fetchFreelancerEscrows]);
+
+
 
   const handleRefresh = () => {
     fetchFreelancerEscrows(true);
@@ -978,112 +1086,7 @@ export default function FreelancerPage() {
     }
   };
 
-  const getStatusFromNumber = (
-    status: number
-  ): "pending" | "active" | "completed" | "disputed" => {
-    switch (status) {
-      case 0:
-        return "pending";
-      case 1:
-        return "active";
-      case 2:
-        return "completed";
-      case 3:
-        return "disputed";
-      case 4:
-        return "active"; // Map cancelled to active
-      default:
-        return "pending";
-    }
-  };
 
-  const getMilestoneStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200";
-      case "submitted":
-        return "bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200";
-      case "approved":
-        return "bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200";
-      case "rejected":
-        return "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200";
-      case "disputed":
-        return "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200";
-      case "resolved":
-        return "bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200";
-      default:
-        return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200";
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "inprogress":
-        return "bg-blue-100 text-blue-800";
-      case "released":
-        return "bg-green-100 text-green-800";
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "submitted":
-        return "bg-blue-100 text-blue-800";
-      case "approved":
-        return "bg-green-100 text-green-800";
-      case "terminated":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const formatAmount = (amount: string) => {
-    try {
-      const num = Number(amount) / 1e7;
-      if (isNaN(num) || num < 0) {
-        return "0.00";
-      }
-      return num.toFixed(2);
-    } catch (error) {
-      return "0.00";
-    }
-  };
-
-  const calculateDaysLeft = (createdAt: number, duration: number): number => {
-    const now = Date.now();
-    // Duration is already in seconds from the contract, convert to milliseconds
-    const projectEndTime = createdAt + duration * 1000;
-    const daysLeft = Math.ceil((projectEndTime - now) / (24 * 60 * 60 * 1000));
-    return Math.max(0, daysLeft); // Don't show negative days
-  };
-
-  const getDaysLeftMessage = (
-    daysLeft: number
-  ): { text: string; color: string; bgColor: string } => {
-    if (daysLeft > 7) {
-      return {
-        text: `${daysLeft} days`,
-        color: "text-red-700 dark:text-red-400",
-        bgColor: "bg-red-50 dark:bg-red-900/20",
-      };
-    } else if (daysLeft > 0) {
-      return {
-        text: `${daysLeft} days`,
-        color: "text-orange-700 dark:text-orange-400",
-        bgColor: "bg-orange-50 dark:bg-orange-900/20",
-      };
-    } else {
-      return {
-        text: "Deadline passed",
-        color: "text-red-700 dark:text-red-400",
-        bgColor: "bg-red-100 dark:bg-red-900/30",
-      };
-    }
-  };
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString();
-  };
 
   if (!wallet.isConnected) {
     return (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +18,7 @@ import {
   useAuthorizeArbiter,
 } from "@/hooks/use-admin";
 import { contractService } from "@/lib/web3/contract-service";
-import { useWeb3 } from "@/contexts/web3-context";
+import { useWeb3 } from "@/hooks/use-web3";
 
 // Unused imports removed: AdminHeader, AdminStats, ContractControls, AdminLoading
 import { DisputeResolution } from "@/components/admin/dispute-resolution";
@@ -72,15 +72,9 @@ export default function AdminPage() {
     whitelistedTokens: 0,
   });
 
-  useEffect(() => {
-    if (wallet.isConnected && wallet.address) {
-      checkPausedStatus();
-      fetchContractOwner();
-      fetchContractStats();
-    }
-  }, [wallet.isConnected, wallet.address]);
 
-  const fetchContractOwner = async () => {
+
+  const fetchContractOwner = useCallback(async () => {
     try {
       // Get owner from contract
       const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
@@ -110,9 +104,9 @@ export default function AdminPage() {
         setContractOwner(ownerFromEnv);
       }
     }
-  };
+  }, [getContract]);
 
-  const fetchContractStats = async () => {
+  const fetchContractStats = useCallback(async () => {
     try {
       // Note: The Stellar contract may not have these exact methods
       // These are placeholders - adjust based on your actual contract methods
@@ -134,9 +128,9 @@ export default function AdminPage() {
         whitelistedTokens: 0,
       });
     }
-  };
+  }, []);
 
-  const checkPausedStatus = async () => {
+  const checkPausedStatus = useCallback(async () => {
     setLoading(true);
     try {
       // Pass the wallet address to the contract service
@@ -151,7 +145,15 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [wallet.address]);
+
+  useEffect(() => {
+    if (wallet.isConnected && wallet.address) {
+      checkPausedStatus();
+      fetchContractOwner();
+      fetchContractStats();
+    }
+  }, [wallet.isConnected, wallet.address, checkPausedStatus, fetchContractOwner, fetchContractStats]);
 
   const openDialog = (type: typeof actionType) => {
     setActionType(type);

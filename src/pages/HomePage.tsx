@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { ArrowRight, Shield, CheckCircle2, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useWeb3 } from "@/contexts/web3-context";
+import { useWeb3 } from "@/hooks/use-web3";
 import { CONTRACTS } from "@/lib/web3/config";
 
 import { motion } from "framer-motion";

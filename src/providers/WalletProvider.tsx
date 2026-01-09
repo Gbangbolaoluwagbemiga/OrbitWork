@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -33,17 +34,9 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
     useState<Omit<WalletContextType, "isPending">>(initialState);
   const [isPending, startTransition] = useTransition();
   const popupLock = useRef(false);
-  const signTransaction = wallet.signTransaction.bind(wallet);
+  const signTransaction = useMemo(() => wallet.signTransaction.bind(wallet), []);
 
-  const nullify = () => {
-    updateState(initialState);
-    storage.setItem("walletId", "");
-    storage.setItem("walletAddress", "");
-    storage.setItem("walletNetwork", "");
-    storage.setItem("networkPassphrase", "");
-  };
-
-  const updateState = (newState: Omit<WalletContextType, "isPending">) => {
+  const updateState = useCallback((newState: Omit<WalletContextType, "isPending">) => {
     setState((prev: Omit<WalletContextType, "isPending">) => {
       if (
         prev.address !== newState.address ||
@@ -54,9 +47,17 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       }
       return prev;
     });
-  };
+  }, []);
 
-  const updateCurrentWalletState = async (forceRefresh = false) => {
+  const nullify = useCallback(() => {
+    updateState(initialState);
+    storage.setItem("walletId", "");
+    storage.setItem("walletAddress", "");
+    storage.setItem("walletNetwork", "");
+    storage.setItem("networkPassphrase", "");
+  }, [updateState]);
+
+  const updateCurrentWalletState = useCallback(async (forceRefresh = false) => {
     // There is no way, with StellarWalletsKit, to check if the wallet is
     // installed/connected/authorized. We need to manage that on our side by
     // checking our storage item.
@@ -131,7 +132,7 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       popupLock.current = false;
     }
-  };
+  }, [state, nullify, updateState]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -166,7 +167,7 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       isMounted = false;
       if (timer) clearTimeout(timer);
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, [updateCurrentWalletState]);
 
   const contextValue = useMemo(
     () => ({

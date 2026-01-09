@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { useWeb3 } from "@/contexts/web3-context";
+import { useWeb3 } from "@/hooks/use-web3";
 import { useToast } from "@/hooks/use-toast";
 import { useJobCreatorStatus } from "@/hooks/use-job-creator-status";
 import { usePendingApprovals } from "@/hooks/use-pending-approvals";
@@ -24,6 +24,25 @@ interface JobWithApplications extends Escrow {
   projectDescription?: string;
   isOpenJob?: boolean;
 }
+
+const getStatusFromNumber = (
+  status: number
+): "pending" | "active" | "completed" | "disputed" => {
+  switch (status) {
+    case 0:
+      return "pending";
+    case 1:
+      return "active";
+    case 2:
+      return "completed";
+    case 3:
+      return "disputed";
+    case 4:
+      return "pending"; // Map cancelled to pending
+    default:
+      return "pending";
+  }
+};
 
 export default function ApprovalsPage() {
   const { wallet } = useWeb3();
@@ -50,26 +69,9 @@ export default function ApprovalsPage() {
   const [approving, setApproving] = useState(false);
   const [, setIsApproving] = useState(false); // Used in handlers
 
-  const getStatusFromNumber = (
-    status: number
-  ): "pending" | "active" | "completed" | "disputed" => {
-    switch (status) {
-      case 0:
-        return "pending";
-      case 1:
-        return "active";
-      case 2:
-        return "completed";
-      case 3:
-        return "disputed";
-      case 4:
-        return "pending"; // Map cancelled to pending
-      default:
-        return "pending";
-    }
-  };
 
-  const fetchMyJobs = async () => {
+
+  const fetchMyJobs = useCallback(async () => {
     if (!wallet.isConnected || !isJobCreator) return;
 
     setLoading(true);
@@ -245,7 +247,7 @@ export default function ApprovalsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [wallet.isConnected, isJobCreator, wallet.address]);
 
   const handleApproveFreelancer = async () => {
     console.log("[handleApproveFreelancer] Called", {
@@ -364,7 +366,7 @@ export default function ApprovalsPage() {
     if (wallet.isConnected && isJobCreator) {
       fetchMyJobs();
     }
-  }, [wallet.isConnected, isJobCreator]);
+  }, [wallet.isConnected, isJobCreator, fetchMyJobs]);
 
   // Don't redirect - let client see the page even if no approvals yet
   // They might want to see their jobs

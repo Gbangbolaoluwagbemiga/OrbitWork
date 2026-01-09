@@ -1,5 +1,3 @@
-import secureFlowAbi from "./secureflow-abi.json";
-
 // Legacy Ethereum ABI (not used for Stellar contracts)
 export const erc20Abi = [
   {
@@ -51,7 +49,3 @@ export const erc20Abi = [
     type: "function",
   },
 ] as const;
-
-// Export the SecureFlow ABI
-export { secureFlowAbi };
-export default secureFlowAbi;

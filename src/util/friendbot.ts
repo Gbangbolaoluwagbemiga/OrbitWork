@@ -1,4 +1,4 @@
-import { stellarNetwork } from "../contracts/util";
+import { stellarNetwork } from "./stellar-constants";
 
 // Utility to get the correct Friendbot URL based on environment
 export function getFriendbotUrl(address: string) {

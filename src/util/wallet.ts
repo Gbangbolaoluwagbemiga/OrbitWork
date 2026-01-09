@@ -6,7 +6,7 @@ import {
   sep43Modules,
 } from "@creit.tech/stellar-wallets-kit";
 import { Horizon } from "@stellar/stellar-sdk";
-import { networkPassphrase, stellarNetwork } from "../contracts/util";
+import { networkPassphrase, stellarNetwork } from "./stellar-constants";
 
 const kit: StellarWalletsKit = new StellarWalletsKit({
   network: networkPassphrase as WalletNetwork,
