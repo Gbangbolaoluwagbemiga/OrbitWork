@@ -3,13 +3,12 @@ import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { ArrowRight, Shield, CheckCircle2, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useWeb3 } from "@/hooks/use-web3";
-import { CONTRACTS } from "@/lib/web3/config";
+import { useCasper } from "@/contexts/casper-context";
 
 import { motion } from "framer-motion";
 
 export default function HomePage() {
-  const { wallet } = useWeb3();
+  const { isConnected, address } = useCasper();
   const [stats, setStats] = useState({
     activeEscrows: 0,
     totalVolume: "0",
@@ -18,80 +17,19 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (wallet.isConnected) {
-      fetchStats();
-    } else {
-      setLoading(false);
-    }
-  }, [wallet.isConnected]);
+    setLoading(false);
+  }, [isConnected, address]);
 
   const fetchStats = async () => {
     try {
       setLoading(true);
 
-      // Use ContractService instead of contract.call - it reads from blockchain
-      const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.SECUREFLOW_ESCROW);
-
-      // Get next escrow ID from blockchain (not hardcoded)
-      const nextEscrowId = await contractService.getNextEscrowId();
-      console.log(`[HomePage] next_escrow_id from blockchain: ${nextEscrowId}`);
-
-      let activeEscrows = 0;
-      let completedEscrows = 0;
-      let totalVolume = 0;
-
-      // Fetch all escrows from the contract to calculate stats
-      // Check up to 20 escrows (reasonable limit)
-      const maxEscrowsToCheck = Math.min(nextEscrowId - 1, 20);
-      for (let i = 1; i <= maxEscrowsToCheck; i++) {
-        try {
-          console.log(`[HomePage] Checking escrow ${i} for stats...`);
-          const escrowData = await contractService.getEscrow(i);
-
-          if (!escrowData) {
-            continue;
-          }
-
-          // Get status and total amount
-          const status = escrowData.status || 0;
-          const totalAmount = Number(escrowData.amount || "0");
-
-          // Add to total volume (convert from motes to CSPR - 9 decimals)
-          totalVolume += totalAmount / 1e9;
-
-          // EscrowStatus enum: Pending=0, InProgress=1, Released=2, Refunded=3, Disputed=4, Expired=5
-          if (status === 1) {
-            // InProgress - Active escrow
-            activeEscrows++;
-          } else if (status === 2) {
-            // Released - Completed
-            completedEscrows++;
-          }
-        } catch (error) {
-          console.error(
-            `[HomePage] Error checking escrow ${i} for stats:`,
-            error
-          );
-          // Skip escrows that don't exist
-          continue;
-        }
-      }
-
-      console.log(`[HomePage] Stats calculated:`, {
-        activeEscrows,
-        completedEscrows,
-        totalVolume: totalVolume.toFixed(2),
-      });
-
       setStats({
-        activeEscrows,
-        totalVolume: totalVolume.toFixed(2),
-        completedEscrows,
+        activeEscrows: 0,
+        totalVolume: "0",
+        completedEscrows: 0,
       });
     } catch (error) {
-      console.error("[HomePage] Error fetching stats:", error);
-      // Set empty stats if contract call fails
       setStats({
         activeEscrows: 0,
         totalVolume: "0",
