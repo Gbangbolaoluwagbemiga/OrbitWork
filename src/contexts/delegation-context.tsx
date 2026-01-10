@@ -32,7 +32,7 @@ interface DelegationContextType {
   executeDelegatedFunction: (
     delegationId: string,
     functionName: string,
-    args: any[],
+    _args: any[],
   ) => Promise<string>;
   isDelegatedFunction: (functionName: string) => boolean;
   getActiveDelegations: () => Delegation[];
@@ -174,7 +174,7 @@ export function DelegationProvider({ children }: { children: ReactNode }) {
   const executeDelegatedFunction = async (
     delegationId: string,
     functionName: string,
-    args: any[],
+    _args: any[],
   ) => {
     try {
       const delegation = delegations.find((d) => d.id === delegationId);

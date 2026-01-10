@@ -23,7 +23,7 @@ const deployToken = async () => {
   const contract = new Contract(client);
   
   const args = RuntimeArgs.fromMap({
-    name: CLValueBuilder.string("SecureFlow Token"),
+    name: CLValueBuilder.string("OrbitWork Token"),
     symbol: CLValueBuilder.string("SFT"),
     decimals: CLValueBuilder.u8(9),
     total_supply: CLValueBuilder.u256("1000000000000000"), // 1 Million

@@ -8,7 +8,6 @@ import DashboardPage from "./pages/DashboardPage";
 import FreelancerPage from "./pages/FreelancerPage";
 import AdminPage from "./pages/AdminPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
-import Debugger from "./pages/Debugger";
 
 const AppLayout = () => (
   <>

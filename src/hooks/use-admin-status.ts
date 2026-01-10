@@ -4,7 +4,7 @@ import { useDelegation } from "@/contexts/delegation-context";
 
 export function useAdminStatus() {
   const { address: casperAddress, isConnected: isCasperConnected } = useCasper();
-  const { getActiveDelegations, delegations } = useDelegation();
+  const { delegations } = useDelegation();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [isArbiter, setIsArbiter] = useState(false);

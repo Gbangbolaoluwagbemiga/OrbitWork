@@ -7,13 +7,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCasper } from "@/contexts/casper-context";
-import { useState } from "react";
 import { Copy, LogOut, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function WalletButton() {
   const { address, isConnected, balance, connect, disconnect, refreshBalance } = useCasper();
-  const [networkIconError, setNetworkIconError] = useState(false);
   const { toast } = useToast();
 
   const handleConnect = () => {

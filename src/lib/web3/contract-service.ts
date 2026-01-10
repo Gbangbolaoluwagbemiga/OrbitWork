@@ -50,13 +50,13 @@ export interface CreateEscrowParams {
 export class ContractService {
   private contractId: string;
   private network: ReturnType<typeof getCurrentNetwork>;
-  private client: SecureFlowClient;
+  private client: OrbitWorkClient;
   private rpcServer: rpc.Server;
 
   constructor(contractId?: string) {
     this.contractId = contractId || CONTRACTS.ORBITWORK_ESCROW;
     this.network = getCurrentNetwork();
-    this.client = new SecureFlowClient({
+    this.client = new OrbitWorkClient({
       contractId: this.contractId,
       networkPassphrase: this.network.networkPassphrase,
       rpcUrl: this.network.rpcUrl,

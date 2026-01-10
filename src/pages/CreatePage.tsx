@@ -20,8 +20,8 @@ interface Milestone {
 
 export default function CreateEscrowPage() {
   const navigate = useNavigate();
-  const { isConnected: isCasperConnected, address: casperAddress } = useCasper();
-  const { createEscrow: createCasperEscrow, isLoading: isCasperLoading } = useCasperEscrow();
+  const { isConnected: isCasperConnected } = useCasper();
+  const { createEscrow: createCasperEscrow } = useCasperEscrow();
   const { toast } = useToast();
   const createEscrow = useCreateEscrow();
   const [step, setStep] = useState(1);

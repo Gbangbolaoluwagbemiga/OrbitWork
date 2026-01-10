@@ -30,7 +30,7 @@ import { Label } from "@/components/ui/label";
 export default function JobsPage() {
   const { wallet, getContract } = useWeb3();
   const casper = useCasper();
-  const { applyToJob, isLoading: isCasperApplying } = useCasperApply();
+  const { applyToJob } = useCasperApply();
   const { toast } = useToast();
   const { addNotification } = useNotifications();
   const [jobs, setJobs] = useState<Escrow[]>([]);

@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 
 export default function HomePage() {
   const { isConnected, address } = useCasper();
-  const [stats, setStats] = useState({
+  const [stats] = useState({
     activeEscrows: 0,
     totalVolume: "0",
     completedEscrows: 0,
@@ -19,26 +19,6 @@ export default function HomePage() {
   useEffect(() => {
     setLoading(false);
   }, [isConnected, address]);
-
-  const fetchStats = async () => {
-    try {
-      setLoading(true);
-
-      setStats({
-        activeEscrows: 0,
-        totalVolume: "0",
-        completedEscrows: 0,
-      });
-    } catch (error) {
-      setStats({
-        activeEscrows: 0,
-        totalVolume: "0",
-        completedEscrows: 0,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen">
@@ -156,7 +136,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-4 text-balance">
-              How SecureFlow Works
+              How OrbitWork Works
             </h2>
             <p className="text-xl text-muted-foreground text-pretty max-w-2xl mx-auto">
               Simple, secure, and transparent escrow for the Web3 era
@@ -232,7 +212,7 @@ export default function HomePage() {
               Ready to secure your next project?
             </h2>
             <p className="text-xl text-muted-foreground mb-8 text-pretty max-w-2xl mx-auto">
-              Join hundreds of freelancers and clients using SecureFlow for
+              Join hundreds of freelancers and clients using OrbitWork for
               trustless payments
             </p>
             <Link to="/create">

@@ -5,7 +5,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCasper } from "@/contexts/casper-context";
 import { CASPER_TESTNET_TOKENS } from "@/config/casper-tokens";
 
 interface ProjectDetailsStepProps {
@@ -37,8 +36,6 @@ export function ProjectDetailsStep({
   isContractPaused,
   errors = {} as ProjectDetailsStepProps["errors"],
 }: ProjectDetailsStepProps) {
-  const { isConnected: isCasperConnected } = useCasper();
-
   return (
     <Card className="glass border-primary/20 p-6">
       <CardHeader>

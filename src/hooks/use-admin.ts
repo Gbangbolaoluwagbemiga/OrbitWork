@@ -87,7 +87,7 @@ export function useSetPlatformFee() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (feeBP: number) => {
+    mutationFn: async (_feeBP: number) => {
       throw new Error("Not implemented for Casper yet");
     },
     onSuccess: () => {
@@ -114,7 +114,7 @@ export function useSetFeeCollector() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (feeCollector: string) =>
+    mutationFn: async (_feeCollector: string) =>
       { throw new Error("Not implemented for Casper yet"); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
@@ -140,7 +140,7 @@ export function useWhitelistToken() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (token: string) => { throw new Error("Not implemented for Casper yet"); },
+    mutationFn: async (_token: string) => { throw new Error("Not implemented for Casper yet"); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
       toast({
@@ -165,7 +165,7 @@ export function useAuthorizeArbiter() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (arbiter: string) => { throw new Error("Not implemented for Casper yet"); },
+    mutationFn: async (_arbiter: string) => { throw new Error("Not implemented for Casper yet"); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
       toast({

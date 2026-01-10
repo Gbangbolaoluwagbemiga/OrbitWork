@@ -17,8 +17,6 @@ import {
   useUnpauseJobCreation,
   useAuthorizeArbiter,
 } from "@/hooks/use-admin";
-import { contractService } from "@/lib/web3/contract-service";
-import { useWeb3 } from "@/hooks/use-web3";
 import { useCasper } from "@/contexts/casper-context";
 import { ORBITWORK_CONTRACT_HASH } from "@/lib/casper/contracts";
 
@@ -383,7 +381,7 @@ export default function AdminPage() {
             )}
             <p className="text-xs text-amber-600 mt-4">
               💡 <span className="font-semibold">Tip:</span> Make sure you're
-              connected with the wallet that deployed the SecureFlow contract or
+              connected with the wallet that deployed the OrbitWork contract or
               an authorized arbiter.
             </p>
           </div>
@@ -419,7 +417,7 @@ export default function AdminPage() {
             <h1 className="text-4xl md:text-5xl font-bold">Admin Controls</h1>
           </div>
           <p className="text-xl text-muted-foreground mb-8">
-            Manage the SecureFlow escrow contract
+            Manage the OrbitWork escrow contract
           </p>
 
           {/* Test Mode Toggle */}
