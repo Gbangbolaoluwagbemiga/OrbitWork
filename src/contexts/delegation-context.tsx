@@ -5,11 +5,11 @@ import {
   use,
   useState,
   useEffect,
+  useMemo,
   type ReactNode,
 } from "react";
-import { useWeb3 } from "./web3-context";
 import { useToast } from "@/hooks/use-toast";
-import { CONTRACTS } from "@/lib/web3/config";
+import { useCasper } from "./casper-context";
 
 
 interface Delegation {
@@ -43,7 +43,7 @@ const DelegationContext = createContext<DelegationContextType | undefined>(
 );
 
 export function DelegationProvider({ children }: { children: ReactNode }) {
-  const { wallet, getContract } = useWeb3();
+  const { isConnected, address } = useCasper();
   const { toast } = useToast();
   const [delegations, setDelegations] = useState<Delegation[]>([]);
 
@@ -67,10 +67,10 @@ export function DelegationProvider({ children }: { children: ReactNode }) {
   ];
 
   useEffect(() => {
-    if (wallet.isConnected) {
+    if (isConnected) {
       loadDelegations();
     }
-  }, [wallet.isConnected]);
+  }, [isConnected]);
 
   const loadDelegations = async () => {
     try {
@@ -99,7 +99,7 @@ export function DelegationProvider({ children }: { children: ReactNode }) {
     duration: number,
   ) => {
     try {
-      if (!wallet.isConnected) {
+      if (!isConnected || !address) {
         throw new Error("Wallet not connected");
       }
 
@@ -113,7 +113,7 @@ export function DelegationProvider({ children }: { children: ReactNode }) {
 
       const delegation: Delegation = {
         id: `delegation_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-        delegator: wallet.address!,
+        delegator: address!,
         delegatee,
         functions,
         expiry: Math.floor(Date.now() / 1000) + duration,
@@ -194,34 +194,13 @@ export function DelegationProvider({ children }: { children: ReactNode }) {
         throw new Error(`Function ${functionName} is not delegated`);
       }
 
-      // Get contract instance
-      const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
-      if (!contract) {
-        throw new Error("Contract not available");
-      }
-
-      // Execute via truly gasless delegation (no blockchain interaction)
-      console.log(
-        "Executing TRULY gasless delegated function:",
-        functionName,
-        "with args:",
-        args,
-      );
-
-      // Simulate gasless execution - no MetaMask, no blockchain, no gas fees
-      const txHash = "0x" + Math.random().toString(16).substring(2);
-
-      console.log("TRULY gasless delegation executed:", txHash);
-
-      // Simulate processing time for realistic UX
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
+      // Placeholder Casper implementation: simulate action and return dummy hash
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const txHash = "0x" + "0".repeat(64);
       toast({
         title: "Delegated Function Executed",
         description: `Function ${functionName} executed successfully`,
       });
-
-      // Transaction successful
       return txHash;
     } catch (error: any) {
       console.error("Delegated function execution failed:", error);
@@ -238,7 +217,8 @@ export function DelegationProvider({ children }: { children: ReactNode }) {
     return delegations.some(
       (delegation) =>
         delegation.isActive &&
-        delegation.delegatee.toLowerCase() === wallet.address?.toLowerCase() &&
+        (!!address &&
+          delegation.delegatee.toLowerCase() === address.toLowerCase()) &&
         delegation.functions.includes(functionName) &&
         delegation.expiry > Math.floor(Date.now() / 1000),
     );
@@ -252,19 +232,22 @@ export function DelegationProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const value = useMemo(
+    () => ({
+      delegations,
+      createDelegation,
+      revokeDelegation,
+      executeDelegatedFunction,
+      isDelegatedFunction,
+      getActiveDelegations,
+    }),
+    [delegations],
+  );
+
   return (
-    <DelegationContext
-      value={{
-        delegations,
-        createDelegation,
-        revokeDelegation,
-        executeDelegatedFunction,
-        isDelegatedFunction,
-        getActiveDelegations,
-      }}
-    >
+    <DelegationContext.Provider value={value}>
       {children}
-    </DelegationContext>
+    </DelegationContext.Provider>
   );
 }
 

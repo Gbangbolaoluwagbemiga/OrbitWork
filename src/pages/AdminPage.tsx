@@ -73,6 +73,10 @@ export default function AdminPage() {
     authorizedArbiters: 0,
     whitelistedTokens: 0,
   });
+  const isContractHashValid =
+    !!SECUREFLOW_CONTRACT_HASH &&
+    SECUREFLOW_CONTRACT_HASH.startsWith("hash-") &&
+    !SECUREFLOW_CONTRACT_HASH.includes("00000000000000000000000000000000");
 
   const fetchContractOwner = useCallback(async () => {
     try {
@@ -149,6 +153,17 @@ export default function AdminPage() {
 
     setActionLoading(true);
     try {
+      if (!isContractHashValid) {
+        toast({
+          title: "Contract not configured",
+          description:
+            "Contract hash is missing or invalid. Set VITE_CASPER_CONTRACT_HASH in your .env to enable admin actions.",
+          variant: "destructive",
+        });
+        setActionLoading(false);
+        setDialogOpen(false);
+        return;
+      }
       // If in test mode, simulate the action without calling the contract
       if (testMode) {
         switch (actionType) {
