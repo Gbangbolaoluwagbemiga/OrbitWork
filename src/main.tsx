@@ -7,6 +7,7 @@ import { ThemeProvider } from "./components/theme-provider";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CasperProvider } from "./contexts/casper-context";
+import { DelegationProvider } from "./contexts/delegation-context";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,11 +23,13 @@ createRoot(document.getElementById("root") as HTMLElement).render(
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <QueryClientProvider client={queryClient}>
         <CasperProvider>
-          <NotificationProvider>
-            <BrowserRouter>
-              <App />
-            </BrowserRouter>
-          </NotificationProvider>
+          <DelegationProvider>
+            <NotificationProvider>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </NotificationProvider>
+          </DelegationProvider>
         </CasperProvider>
       </QueryClientProvider>
     </ThemeProvider>
