@@ -7,7 +7,7 @@
 
 ## Build Contract
 ```bash
-cd secureflow
+cd orbitwork
 cargo +nightly-2023-06-01 build --release --target wasm32-unknown-unknown -p orbitwork
 ```
 

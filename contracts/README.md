@@ -4,7 +4,7 @@ This directory contains the OrbitWork smart contracts for the Casper Network.
 
 ## Structure
 
-- `secureflow/`: The main contract package.
+- `orbitwork/`: The main contract package.
   - `src/lib.rs`: Contract logic and entry points.
   - `src/data.rs`: Data structures (Escrow, Application) and storage helpers.
   - `src/error.rs`: Error definitions.
@@ -15,7 +15,7 @@ This directory contains the OrbitWork smart contracts for the Casper Network.
 To build the contract:
 
 ```bash
-cd secureflow
+cd orbitwork
 cargo +nightly-2023-06-01 build --release --target wasm32-unknown-unknown -p orbitwork
 ```
 

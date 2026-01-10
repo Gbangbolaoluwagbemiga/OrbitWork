@@ -1,5 +1,5 @@
 [workspace]
-members = ["contracts/secureflow"]
+members = ["contracts/orbitwork"]
 resolver = "2"
 
 [workspace.package]
