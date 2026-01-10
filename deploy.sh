@@ -16,12 +16,12 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Check if WASM file exists
-WASM_FILE="casper_contracts/secureflow/target/wasm32-unknown-unknown/release/orbitwork.wasm"
+WASM_FILE="target/wasm32-unknown-unknown/release/orbitwork.wasm"
 if [ ! -f "$WASM_FILE" ]; then
     echo -e "${YELLOW}⚠️  WASM file not found at $WASM_FILE${NC}"
     echo -e "${YELLOW}Attempting to build...${NC}"
-    cd casper_contracts/secureflow
-    cargo +nightly-2023-06-01 build --release --target wasm32-unknown-unknown -p orbitwork
+    cd contracts/orbitwork
+    cargo build --release --target wasm32-unknown-unknown -p orbitwork
     cd ../..
     
     if [ ! -f "$WASM_FILE" ]; then
@@ -48,7 +48,22 @@ echo -e "${YELLOW}📡 Deploying to: ${CHAIN_NAME} (${NODE_ADDRESS})${NC}"
 echo ""
 
 # Check for secret key
-SECRET_KEY_PATH="secret_key_sec1.pem"
+SECRET_KEY_PATH="secret_key.pem"
+
+if [ ! -f "$SECRET_KEY_PATH" ]; then
+    # Try to load from .env
+    if [ -f ".env" ]; then
+        echo -e "${YELLOW}Loading private key from .env...${NC}"
+        source .env
+        if [ -n "$PRIVATE_KEY" ]; then
+            echo "-----BEGIN EC PRIVATE KEY-----" > "$SECRET_KEY_PATH"
+            echo "$PRIVATE_KEY" >> "$SECRET_KEY_PATH"
+            echo "-----END EC PRIVATE KEY-----" >> "$SECRET_KEY_PATH"
+            echo -e "${GREEN}✅ Generated $SECRET_KEY_PATH from .env${NC}"
+        fi
+    fi
+fi
+
 if [ ! -f "$SECRET_KEY_PATH" ]; then
     echo -e "${YELLOW}⚠️  Secret key not found at $SECRET_KEY_PATH${NC}"
     echo "Please provide the path to your secret key (e.g., /path/to/secret_key.pem):"
