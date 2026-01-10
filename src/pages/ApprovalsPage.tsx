@@ -97,7 +97,7 @@ export default function ApprovalsPage() {
 
       // Use ContractService instead of contract.call - it reads from blockchain
       const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.SECUREFLOW_ESCROW);
+      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       // Get next escrow ID from blockchain (not hardcoded)
       const nextEscrowId = await contractService.getNextEscrowId();
@@ -287,7 +287,7 @@ export default function ApprovalsPage() {
       console.log("[handleApproveFreelancer] Starting approval process...");
       // Use ContractService instead of contract.send - it handles address conversion and auth properly
       const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.SECUREFLOW_ESCROW);
+      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       console.log(
         "[handleApproveFreelancer] Calling contractService.acceptFreelancer...",

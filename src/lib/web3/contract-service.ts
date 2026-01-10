@@ -14,7 +14,7 @@ import {
   Operation,
   xdr,
 } from "@stellar/stellar-sdk";
-import { Client as SecureFlowClient } from "@/contracts/generated/src/index";
+import { Client as OrbitWorkClient } from "@/contracts/generated/src/index";
 import { getCurrentNetwork, CONTRACTS } from "./stellar-config";
 import { signTransaction, signAuthEntries } from "./wallet-signer";
 import useWalletStore from "@/store/wallet.store";
@@ -54,7 +54,7 @@ export class ContractService {
   private rpcServer: rpc.Server;
 
   constructor(contractId?: string) {
-    this.contractId = contractId || CONTRACTS.SECUREFLOW_ESCROW;
+    this.contractId = contractId || CONTRACTS.ORBITWORK_ESCROW;
     this.network = getCurrentNetwork();
     this.client = new SecureFlowClient({
       contractId: this.contractId,

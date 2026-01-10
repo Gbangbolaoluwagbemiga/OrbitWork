@@ -8,8 +8,8 @@ export interface Token {
 
 export const CASPER_TESTNET_TOKENS: Token[] = [
   {
-    name: "SecureFlow Test Token",
-    symbol: "SFT",
+    name: "OrbitWork Test Token",
+    symbol: "OWT",
     address: "hash-46f3380815779532501538350153024853024853024853024853024853024853", // Placeholder
     decimals: 9,
   },

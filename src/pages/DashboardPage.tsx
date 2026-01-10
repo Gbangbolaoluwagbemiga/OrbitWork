@@ -146,7 +146,7 @@ export default function DashboardPage() {
 
       // Use ContractService instead of contract.call - it reads from blockchain
       const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.SECUREFLOW_ESCROW);
+      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       // Get next escrow ID from blockchain (not hardcoded)
       const nextEscrowId = await contractService.getNextEscrowId();
@@ -627,7 +627,7 @@ export default function DashboardPage() {
 
       setSubmittingMilestone(`${escrowId}-${milestoneIndex}`);
       const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.SECUREFLOW_ESCROW);
+      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       toast({
         title: "Disputing milestone...",
@@ -677,7 +677,7 @@ export default function DashboardPage() {
 
   const startWork = async (escrowId: string) => {
     try {
-      const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
+      const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
       if (!contract) return;
 
       setSubmittingMilestone(escrowId);
@@ -722,7 +722,7 @@ export default function DashboardPage() {
     try {
       setSubmittingMilestone(escrowId);
       const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.SECUREFLOW_ESCROW);
+      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       await contractService.disputeMilestone({
         escrow_id: Number(escrowId),
@@ -782,7 +782,7 @@ export default function DashboardPage() {
       }
 
       setSubmittingMilestone(`${escrowId}-${milestoneIndex}`);
-      const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
+      const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
       if (!contract) return;
 
       toast({
@@ -884,7 +884,7 @@ export default function DashboardPage() {
 
       setSubmittingMilestone(`${escrowId}-${milestoneIndex}`);
       const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.SECUREFLOW_ESCROW);
+      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       toast({
         title: "Rejecting milestone...",

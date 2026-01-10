@@ -28,7 +28,7 @@ import {
 } from "@/util/wallet";
 import { useWallet } from "@/hooks/useWallet";
 import storage from "@/util/storage";
-import { Client as SecureFlowClient } from "@/contracts/generated/src/index";
+import { Client as OrbitWorkClient } from "@/contracts/generated/src/index";
 
 interface Web3ContextType {
   wallet: WalletState;
@@ -381,14 +381,14 @@ export function Web3Provider({ children }: { children: ReactNode }) {
   const getContract = useCallback((contractId: string) => {
     if (!contractId || contractId === "") {
       console.error(
-        "Contract ID is required. Please set VITE_SECUREFLOW_CONTRACT_ID in your .env file"
+        "Contract ID is required. Please set VITE_ORBITWORK_CONTRACT_ID in your .env file"
       );
       console.error("Current contract ID:", contractId);
       return null;
     }
 
     // Use the generated contract client for type-safe contract interactions
-    const client = new SecureFlowClient({
+    const client = new OrbitWorkClient({
       contractId,
       networkPassphrase: network.networkPassphrase,
       rpcUrl: network.rpcUrl,

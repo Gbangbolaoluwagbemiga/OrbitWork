@@ -259,7 +259,7 @@ export default function FreelancerPage() {
 
       // Use ContractService instead of contract.call - it reads from blockchain
       const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.SECUREFLOW_ESCROW);
+      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       // Get next escrow ID from blockchain (not hardcoded)
       const nextEscrowId = await contractService.getNextEscrowId();
@@ -637,7 +637,7 @@ export default function FreelancerPage() {
 
       // Use ContractService instead of contract.send - it handles the correct format
       const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.SECUREFLOW_ESCROW);
+      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       await contractService.startWork(Number(escrowId), wallet.address);
 
@@ -839,7 +839,7 @@ export default function FreelancerPage() {
 
     // Additional check: Get the current milestone status from contract
     try {
-      const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
+      const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
       const milestones = await contract.call("get_milestones", escrowId);
 
       if (milestones && milestones.length > milestoneIndex) {
@@ -889,7 +889,7 @@ export default function FreelancerPage() {
 
       // Use ContractService instead of contract.send - it handles the correct format
       const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.SECUREFLOW_ESCROW);
+      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       await contractService.submitMilestone({
         escrow_id: Number(escrowId),
@@ -973,7 +973,7 @@ export default function FreelancerPage() {
 
       // Use ContractService resubmitMilestone for rejected milestones
       const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.SECUREFLOW_ESCROW);
+      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       await contractService.resubmitMilestone({
         escrow_id: Number(escrowId),
@@ -1050,7 +1050,7 @@ export default function FreelancerPage() {
 
       // Use ContractService instead of contract.send
       const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.SECUREFLOW_ESCROW);
+      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       await contractService.disputeMilestone({
         escrow_id: Number(escrowId),

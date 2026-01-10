@@ -101,7 +101,7 @@ export function MilestoneActions({
     if (!actionType) return;
 
     setIsLoading(true);
-    const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
+    const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
 
     try {
       let txHash: string | undefined;
@@ -129,7 +129,7 @@ export function MilestoneActions({
             "@/lib/web3/contract-service"
           );
           const contractService = new ContractService(
-            CONTRACTS.SECUREFLOW_ESCROW
+            CONTRACTS.ORBITWORK_ESCROW
           );
           txHash = await contractService.approveMilestone({
             escrow_id: Number(escrowId),
@@ -143,7 +143,7 @@ export function MilestoneActions({
             "@/lib/web3/contract-service"
           );
           const rejectContractService = new RejectContractService(
-            CONTRACTS.SECUREFLOW_ESCROW
+            CONTRACTS.ORBITWORK_ESCROW
           );
           txHash = await rejectContractService.rejectMilestone({
             escrow_id: Number(escrowId),
@@ -163,7 +163,7 @@ export function MilestoneActions({
             "@/lib/web3/contract-service"
           );
           const disputeContractService = new DisputeContractService(
-            CONTRACTS.SECUREFLOW_ESCROW
+            CONTRACTS.ORBITWORK_ESCROW
           );
           txHash = await disputeContractService.disputeMilestone({
             escrow_id: Number(escrowId),

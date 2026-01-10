@@ -12,13 +12,13 @@ import { DEFAULT_NETWORK } from "./casper-config";
 
 // Placeholder for the deployed contract hash
 // Try to get from environment variable first
-export const SECUREFLOW_CONTRACT_HASH = 
+export const ORBITWORK_CONTRACT_HASH = 
   import.meta.env.VITE_CASPER_CONTRACT_HASH || 
-  import.meta.env.VITE_SECUREFLOW_CONTRACT_HASH || 
+  import.meta.env.VITE_ORBITWORK_CONTRACT_HASH || 
   "hash-0000000000000000000000000000000000000000000000000000000000000000"; 
 
-if (SECUREFLOW_CONTRACT_HASH.includes("00000000000000000000000000000000")) {
-  console.warn("⚠️ WARNING: SECUREFLOW_CONTRACT_HASH is set to default zeros. Contract interactions will fail. Please set VITE_CASPER_CONTRACT_HASH in your .env file.");
+if (ORBITWORK_CONTRACT_HASH.includes("00000000000000000000000000000000")) {
+  console.warn("⚠️ WARNING: ORBITWORK_CONTRACT_HASH is set to default zeros. Contract interactions will fail. Please set VITE_CASPER_CONTRACT_HASH in your .env file.");
 }
 
 export interface CreateEscrowParams {
@@ -47,7 +47,7 @@ export function createEscrowDeploy(
     CLValue.newCLString(m.description)
   );
 
-  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH.replace("hash-", ""));
+  const contractHash = ContractHash.fromJSON(ORBITWORK_CONTRACT_HASH.replace("hash-", ""));
 
   const args = Args.fromMap({
     "project_title": CLValue.newCLString(params.projectTitle),
@@ -89,7 +89,7 @@ export function applyToJobDeploy(
 ): Deploy {
   const senderPublicKey = PublicKey.fromHex(senderPublicKeyHex);
 
-  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH.replace("hash-", ""));
+  const contractHash = ContractHash.fromJSON(ORBITWORK_CONTRACT_HASH.replace("hash-", ""));
 
   const args = Args.fromMap({
     "escrow_id": CLValue.newCLUInt32(params.escrowId),
@@ -121,7 +121,7 @@ export function pauseJobCreationDeploy(
 ): Deploy {
   const senderPublicKey = PublicKey.fromHex(senderPublicKeyHex);
 
-  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH.replace("hash-", ""));
+  const contractHash = ContractHash.fromJSON(ORBITWORK_CONTRACT_HASH.replace("hash-", ""));
 
   // Assuming the entry point is named "pause_job_creation" taking no args
   const args = Args.fromMap({});
@@ -150,7 +150,7 @@ export function unpauseJobCreationDeploy(
 ): Deploy {
   const senderPublicKey = PublicKey.fromHex(senderPublicKeyHex);
 
-  const contractHash = ContractHash.fromJSON(SECUREFLOW_CONTRACT_HASH.replace("hash-", ""));
+  const contractHash = ContractHash.fromJSON(ORBITWORK_CONTRACT_HASH.replace("hash-", ""));
 
   const args = Args.fromMap({});
 

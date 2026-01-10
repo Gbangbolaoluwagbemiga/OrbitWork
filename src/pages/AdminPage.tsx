@@ -20,7 +20,7 @@ import {
 import { contractService } from "@/lib/web3/contract-service";
 import { useWeb3 } from "@/hooks/use-web3";
 import { useCasper } from "@/contexts/casper-context";
-import { SECUREFLOW_CONTRACT_HASH } from "@/lib/casper/contracts";
+import { ORBITWORK_CONTRACT_HASH } from "@/lib/casper/contracts";
 
 // Unused imports removed: AdminHeader, AdminStats, ContractControls, AdminLoading
 import { DisputeResolution } from "@/components/admin/dispute-resolution";
@@ -74,9 +74,9 @@ export default function AdminPage() {
     whitelistedTokens: 0,
   });
   const isContractHashValid =
-    !!SECUREFLOW_CONTRACT_HASH &&
-    SECUREFLOW_CONTRACT_HASH.startsWith("hash-") &&
-    !SECUREFLOW_CONTRACT_HASH.includes("00000000000000000000000000000000");
+    !!ORBITWORK_CONTRACT_HASH &&
+    ORBITWORK_CONTRACT_HASH.startsWith("hash-") &&
+    !ORBITWORK_CONTRACT_HASH.includes("00000000000000000000000000000000");
 
   const fetchContractOwner = useCallback(async () => {
     try {
@@ -542,7 +542,7 @@ export default function AdminPage() {
                   Contract Address
                 </p>
                 <p className="font-mono text-sm">
-                  {CONTRACTS.SECUREFLOW_ESCROW.slice(0, 20)}...
+                  {CONTRACTS.ORBITWORK_ESCROW.slice(0, 20)}...
                 </p>
               </div>
             </div>
@@ -744,7 +744,7 @@ export default function AdminPage() {
                   Contract Address
                 </Label>
                 <p className="font-mono text-sm bg-muted/50 p-3 rounded-lg">
-                  {isCasperConnected ? SECUREFLOW_CONTRACT_HASH : CONTRACTS.SECUREFLOW_ESCROW}
+                  {isCasperConnected ? ORBITWORK_CONTRACT_HASH : CONTRACTS.ORBITWORK_ESCROW}
                 </p>
               </div>
               <div>

@@ -102,7 +102,7 @@ export default function JobsPage() {
 
   const countOngoingProjects = async () => {
     try {
-      const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
+      const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
 
       // Get total number of escrows
       const totalEscrows = await contract.call("next_escrow_id");
@@ -469,7 +469,7 @@ export default function JobsPage() {
 
     // STELLAR PATH
     try {
-      const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
+      const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
       if (!contract) {
           setApplying(false);
           return;

@@ -71,7 +71,7 @@ export function DisputeResolution({
       if (showLoading) {
         setLoading(true);
       }
-      const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
+      const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
       if (!contract) return;
 
       const disputes: Dispute[] = [];
@@ -194,7 +194,7 @@ export function DisputeResolution({
 
     try {
       setIsResolving(true);
-      const contract = getContract(CONTRACTS.SECUREFLOW_ESCROW);
+      const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
       if (!contract) return;
 
       // Convert beneficiary amount to wei - handle large numbers safely
