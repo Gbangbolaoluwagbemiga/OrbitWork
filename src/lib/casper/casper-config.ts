@@ -1,7 +1,7 @@
 export const CasperNetwork = {
   TESTNET: {
     name: "Casper Testnet",
-    nodeUrl: "https://rpc.testnet.casper.org/rpc", // Official HTTPS Testnet Node (avoids Mixed Content errors)
+    nodeUrl: "https://node-api.testnet.casper.network/rpc", // Reliable HTTPS Testnet RPC
     chainName: "casper-test",
     scanUrl: "https://testnet.cspr.live",
   },
