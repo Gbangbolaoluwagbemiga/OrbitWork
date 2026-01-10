@@ -1,11 +1,11 @@
 /**
  * Centralized wallet signing utility
- * Handles transaction signing with Stellar wallets
+ * Handles transaction signing with Casper wallets
  */
 
 import { TransactionBuilder } from "@stellar/stellar-sdk";
 import { wallet } from "@/util/wallet";
-import { getCurrentNetwork } from "./stellar-config";
+import { getCurrentNetwork } from "./casper-legacy-config";
 import storage from "@/util/storage";
 // import { kit } from "./wallet-kit"; // Unused
 

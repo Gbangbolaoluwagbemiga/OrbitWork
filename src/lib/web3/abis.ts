@@ -1,4 +1,4 @@
-// Legacy Ethereum ABI (not used for Stellar contracts)
+// Legacy Ethereum ABI (not used for Casper contracts)
 export const erc20Abi = [
   {
     inputs: [],

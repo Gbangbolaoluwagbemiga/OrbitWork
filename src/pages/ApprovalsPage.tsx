@@ -80,7 +80,7 @@ export default function ApprovalsPage() {
       let currentLedger = 0;
       try {
         const { rpc } = await import("@stellar/stellar-sdk");
-        const { getCurrentNetwork } = await import("@/lib/web3/stellar-config");
+        const { getCurrentNetwork } = await import("@/lib/web3/casper-legacy-config");
         const network = getCurrentNetwork();
         const rpcServer = new rpc.Server(network.rpcUrl);
         const latestLedger = await rpcServer.getLatestLedger();
@@ -192,7 +192,7 @@ export default function ApprovalsPage() {
               }
 
               // IMPORTANT: created_at and deadline are LEDGER SEQUENCE NUMBERS, not timestamps!
-              // Stellar ledgers close approximately every 5 seconds
+              // Casper ledgers close approximately every 5 seconds
               // Duration = (deadline - created_at) * 5 seconds
               const SECONDS_PER_LEDGER = 5;
               const ledgerDiff = escrow.deadline - escrow.created_at;

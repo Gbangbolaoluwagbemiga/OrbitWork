@@ -6,7 +6,7 @@ import {
   sep43Modules,
 } from "@creit.tech/stellar-wallets-kit";
 import { Horizon } from "@stellar/stellar-sdk";
-import { networkPassphrase, stellarNetwork } from "./stellar-constants";
+import { networkPassphrase, casperLegacyNetwork } from "./casper-legacy-constants";
 
 const kit: StellarWalletsKit = new StellarWalletsKit({
   network: networkPassphrase as WalletNetwork,
@@ -64,13 +64,13 @@ function getHorizonHost(mode: string) {
     case "PUBLIC":
       return "https://horizon.stellar.org";
     default:
-      throw new Error(`Unknown Stellar network: ${mode}`);
+      throw new Error(`Unknown Casper network: ${mode}`);
   }
 }
 
 export const fetchBalance = async (address: string) => {
-  const horizon = new Horizon.Server(getHorizonHost(stellarNetwork), {
-    allowHttp: stellarNetwork === "LOCAL",
+  const horizon = new Horizon.Server(getHorizonHost(casperLegacyNetwork), {
+    allowHttp: casperLegacyNetwork === "LOCAL",
   });
 
   const { balances } = await horizon.accounts().accountId(address).call();

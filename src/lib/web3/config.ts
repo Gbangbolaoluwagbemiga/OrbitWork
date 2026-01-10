@@ -1,18 +1,18 @@
-// Re-export Stellar config for compatibility
+// Re-export Casper config for compatibility
 export {
   CONTRACTS,
   getCurrentNetwork,
-  STELLAR_NETWORKS,
-} from "./stellar-config";
+  CASPER_LEGACY_NETWORKS,
+} from "./casper-legacy-config";
 
-// Stellar doesn't use addresses like Ethereum, but we keep this for compatibility
+// Casper doesn't use addresses like Ethereum, but we keep this for compatibility
 export const GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF =
   "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 
-// Legacy exports for backward compatibility (deprecated - use stellar-config instead)
+// Legacy exports for backward compatibility (deprecated - use casper-legacy-config instead)
 export const BASE_MAINNET = {
   chainId: null,
-  chainName: "Stellar Mainnet",
+  chainName: "Casper Mainnet",
   nativeCurrency: {
     name: "Lumen",
     symbol: "XLM",
@@ -24,7 +24,7 @@ export const BASE_MAINNET = {
 
 export const BASE_TESTNET = {
   chainId: null,
-  chainName: "Stellar Testnet",
+  chainName: "Casper Testnet",
   nativeCurrency: {
     name: "Lumen",
     symbol: "XLM",

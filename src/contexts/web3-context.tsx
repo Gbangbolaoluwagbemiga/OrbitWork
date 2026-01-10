@@ -8,7 +8,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { getCurrentNetwork } from "@/lib/web3/stellar-config";
+import { getCurrentNetwork } from "@/lib/web3/casper-legacy-config";
 import type { WalletState } from "@/lib/web3/types";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -184,7 +184,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
               // If nativeBalance is not found, keep existing balance or use 0 as fallback
               setWalletState((prev) => ({
                 address: publicKey,
-                chainId: null, // Stellar doesn't use chain IDs
+                chainId: null, // Casper doesn't use chain IDs
                 isConnected: true,
                 balance:
                   fullBalance !== null
@@ -252,7 +252,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
 
   const connectWallet = useCallback(async () => {
     try {
-      // Use Stellar Wallets Kit to connect
+      // Use Casper Wallets Kit to connect
       await connectWalletUtil();
 
       // Wait a bit for storage to update
@@ -346,7 +346,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
         title: "Connection failed",
         description:
           error.message ||
-          "Failed to connect wallet. Please install a Stellar wallet.",
+          "Failed to connect wallet. Please install a Casper wallet.",
         variant: "destructive",
       });
     }
@@ -370,11 +370,11 @@ export function Web3Provider({ children }: { children: ReactNode }) {
   const switchNetwork = useCallback(async (
     targetNetwork: "testnet" | "mainnet" | "local"
   ) => {
-    // Stellar networks are handled via environment variables
+    // Casper networks are handled via environment variables
     // This is mainly for UI feedback
     toast({
       title: "Network switch",
-      description: `Switching to ${targetNetwork}. Please update VITE_STELLAR_NETWORK in .env`,
+      description: `Switching to ${targetNetwork}. Please update VITE_CASPER_LEGACY_NETWORK in .env`,
     });
   }, [toast]);
 

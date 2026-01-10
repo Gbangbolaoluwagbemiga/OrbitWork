@@ -64,7 +64,7 @@ const FundAccountButton: React.FC = () => {
         <div style={{ width: "13em" }}>
           {isFunded
             ? "Account is already funded"
-            : "Fund your account using the Stellar Friendbot"}
+            : "Fund your account using the Casper Friendbot"}
         </div>
       </Tooltip>
     </div>

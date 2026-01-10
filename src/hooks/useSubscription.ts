@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Server, Api } from "@stellar/stellar-sdk/rpc";
 import { xdr } from "@stellar/stellar-sdk";
-import { rpcUrl, stellarNetwork } from "../util/stellar-constants";
+import { rpcUrl, casperLegacyNetwork } from "../util/casper-legacy-constants";
 
 /**
  * Concatenated `${contractId}:${topic}`
@@ -18,7 +18,7 @@ const paging: Record<
 > = {};
 
 // NOTE: Server is configured using envvars which shouldn't change during runtime
-const server = new Server(rpcUrl, { allowHttp: stellarNetwork === "LOCAL" });
+const server = new Server(rpcUrl, { allowHttp: casperLegacyNetwork === "LOCAL" });
 
 /**
  * Subscribe to events for a given topic from a given contract, using a library

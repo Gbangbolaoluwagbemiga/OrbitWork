@@ -1,4 +1,4 @@
-// Stellar Contract Client Wrapper
+// Casper Contract Client Wrapper
 // This provides a compatible interface for contract interactions
 
 import {
@@ -8,14 +8,14 @@ import {
   nativeToScVal,
   scValToNative,
 } from "@stellar/stellar-sdk";
-// import { getCurrentNetwork } from "./stellar-config"; // Unused
+// import { getCurrentNetwork } from "./casper-legacy-config"; // Unused
 
-export interface StellarContractClient {
+export interface CasperContractClient {
   call(method: string, ...args: any[]): Promise<any>;
   send(method: string, ...args: any[]): Promise<string>;
 }
 
-export class StellarContract {
+export class CasperContract {
   private contract: Contract;
   // private rpcServer: rpc.Server; // Unused - only set in constructor but never used
   // private network: ReturnType<typeof getCurrentNetwork>; // Unused
@@ -29,7 +29,7 @@ export class StellarContract {
   async call(method: string, ...args: any[]): Promise<any> {
     try {
       const methodArgs = args.map((arg) => {
-        // Convert arguments to Stellar ScVal format
+        // Convert arguments to Casper ScVal format
         if (typeof arg === "string") {
           return Address.fromString(arg).toScVal();
         } else if (typeof arg === "number") {
@@ -66,18 +66,18 @@ export class StellarContract {
   }
 
   async send(_method: string, ..._args: any[]): Promise<string> {
-    // For Stellar, we need to build and sign the transaction
+    // For Casper, we need to build and sign the transaction
     // This will be handled by the wallet context
     throw new Error(
-      "send() method not implemented in StellarClient - use Web3Context.send() instead"
+      "send() method not implemented in CasperClient - use Web3Context.send() instead"
     );
   }
 }
 
-export function createStellarContract(
+export function createCasperContract(
   contractId: string
-): StellarContractClient {
-  const contract = new StellarContract(contractId);
+): CasperContractClient {
+  const contract = new CasperContract(contractId);
 
   return {
     async call(method: string, ...args: any[]) {

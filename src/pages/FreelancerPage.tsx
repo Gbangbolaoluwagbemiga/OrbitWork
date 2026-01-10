@@ -199,7 +199,7 @@ const formatDate = (timestamp: number) => {
 export default function FreelancerPage() {
   const { wallet, getContract } = useWeb3();
   const { addNotification, addCrossWalletNotification } = useNotifications();
-  // Stellar doesn't use smart accounts
+  // Casper doesn't use smart accounts
   // const { executeTransaction, isSmartAccountReady } = useSmartAccount();
   const [escrows, setEscrows] = useState<Escrow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -271,7 +271,7 @@ export default function FreelancerPage() {
       let currentLedger = 0;
       try {
         const { rpc } = await import("@stellar/stellar-sdk");
-        const { getCurrentNetwork } = await import("@/lib/web3/stellar-config");
+        const { getCurrentNetwork } = await import("@/lib/web3/casper-legacy-config");
         const network = getCurrentNetwork();
         const rpcServer = new rpc.Server(network.rpcUrl);
         const latestLedger = await rpcServer.getLatestLedger();
@@ -899,7 +899,7 @@ export default function FreelancerPage() {
       });
 
       // Transaction is already confirmed via waitForConfirmation in web3-context
-      // For Stellar, we don't need to poll for receipts like Ethereum
+      // For Casper, we don't need to poll for receipts like Ethereum
       // The transaction hash is returned after confirmation
       toast({
         title: "Milestone submitted!",
@@ -983,7 +983,7 @@ export default function FreelancerPage() {
       });
 
       // Transaction is already confirmed via waitForConfirmation in web3-context
-      // For Stellar, we don't need to poll for receipts like Ethereum
+      // For Casper, we don't need to poll for receipts like Ethereum
       // The transaction hash is returned after confirmation
       toast({
         title: "Milestone resubmitted!",

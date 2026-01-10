@@ -8,7 +8,7 @@ import { ISupportedWallet } from "@creit.tech/stellar-wallets-kit";
 import { kit } from "@/lib/web3/wallet-kit";
 import useWalletStore from "@/store/wallet.store";
 import { fetchBalance } from "@/util/wallet";
-import { getCurrentNetwork } from "@/lib/web3/stellar-config";
+import { getCurrentNetwork } from "@/lib/web3/casper-legacy-config";
 import { toast } from "@/hooks/use-toast";
 
 export const useWalletRefactored = () => {

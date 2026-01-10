@@ -1,7 +1,7 @@
 import React from "react";
 import { Icon } from "@stellar/design-system";
 import { useWallet } from "../hooks/useWallet";
-import { stellarNetwork } from "../util/stellar-constants";
+import { casperLegacyNetwork } from "../util/casper-legacy-constants";
 
 // Format network name with first letter capitalized
 const formatNetworkName = (name: string) =>
@@ -10,7 +10,7 @@ const formatNetworkName = (name: string) =>
     ? "Local"
     : name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
 
-const appNetwork = formatNetworkName(stellarNetwork);
+const appNetwork = formatNetworkName(casperLegacyNetwork);
 
 const bgColor = "#F0F2F5";
 const textColor = "#4A5362";

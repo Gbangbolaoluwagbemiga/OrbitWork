@@ -46,8 +46,8 @@ export interface EscrowStats {
 }
 
 export interface WalletState {
-  address: string | null; // Stellar public key (G...)
-  chainId: number | null; // Deprecated: Stellar doesn't use chain IDs
+  address: string | null; // Casper public key (G...)
+  chainId: number | null; // Deprecated: Casper doesn't use chain IDs
   isConnected: boolean;
   balance: string; // XLM balance (7 decimals)
 }

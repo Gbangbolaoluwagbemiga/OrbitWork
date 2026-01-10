@@ -15,7 +15,7 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import { Client as OrbitWorkClient } from "@/contracts/generated/src/index";
-import { getCurrentNetwork, CONTRACTS } from "./stellar-config";
+import { getCurrentNetwork, CONTRACTS } from "./casper-legacy-config";
 import { signTransaction, signAuthEntries } from "./wallet-signer";
 import useWalletStore from "@/store/wallet.store";
 
@@ -82,7 +82,7 @@ export class ContractService {
         walletAddress.startsWith("G") &&
         walletAddress.length === 56
       ) {
-        // Valid Stellar account address (starts with G and is 56 chars)
+        // Valid Casper account address (starts with G and is 56 chars)
         sourceAddress = walletAddress;
       } else {
         // Use a dummy account for view functions (any valid account address works)
@@ -1735,7 +1735,7 @@ export class ContractService {
 
         // If ownerAddress is an Address object, convert to string
         if (ownerAddress && typeof ownerAddress === "object") {
-          // Check if it's an Address instance from Stellar SDK
+          // Check if it's an Address instance from Casper SDK
           const { Address } = await import("@stellar/stellar-sdk");
           if (ownerAddress instanceof Address) {
             ownerAddress = ownerAddress.toString();
@@ -1931,7 +1931,7 @@ export class ContractService {
       if (returnValue) {
         try {
           console.log("Simulation returnValue:", returnValue);
-          // Check if returnValue has a retval property (common in Stellar SDK)
+          // Check if returnValue has a retval property (common in Casper SDK)
           let scVal: xdr.ScVal;
           if (returnValue.retval) {
             // The actual return value is in retval property
@@ -2030,7 +2030,7 @@ export class ContractService {
           const txHash = sendResponse.hash || "";
           console.log("Transaction sent! Hash:", txHash);
           console.log(
-            "View on StellarExpert:",
+            "View on Casper Explorer:",
             `https://stellar.expert/explorer/testnet/tx/${txHash}`
           );
           console.log("Send response status:", sendResponse.status);
@@ -2119,7 +2119,7 @@ export class ContractService {
                   keys: Object.keys(resultXdrObj),
                   constructor: resultXdrObj.constructor?.name,
                 });
-                // Check if it has a retval property (common in Stellar SDK)
+                // Check if it has a retval property (common in Casper SDK)
                 if (resultXdrObj.retval) {
                   resultScVal = resultXdrObj.retval;
                 } else if (
@@ -2186,7 +2186,7 @@ export class ContractService {
       const txHash = sendResponse.hash || "";
       console.log("Transaction sent! Hash:", txHash);
       console.log(
-        "View on StellarExpert:",
+        "View on Casper Explorer:",
         `https://stellar.expert/explorer/testnet/tx/${txHash}`
       );
       console.log("Send response status:", sendResponse.status);
@@ -2265,7 +2265,7 @@ export class ContractService {
               keys: Object.keys(resultXdrObj),
               constructor: resultXdrObj.constructor?.name,
             });
-            // Check if it has a retval property (common in Stellar SDK)
+            // Check if it has a retval property (common in Casper SDK)
             if (resultXdrObj.retval) {
               resultScVal = resultXdrObj.retval;
             } else if (
@@ -4085,7 +4085,7 @@ export class ContractService {
         if (status === "SUCCESS") {
           console.log("Transaction confirmed! Hash:", hash);
           console.log(
-            "View on StellarExpert:",
+            "View on Casper Explorer:",
             `https://stellar.expert/explorer/testnet/tx/${hash}`
           );
           return hash;
@@ -4094,7 +4094,7 @@ export class ContractService {
         if (status === "FAILED") {
           console.error("Transaction failed on blockchain! Hash:", hash);
           console.log(
-            "View on StellarExpert:",
+            "View on Casper Explorer:",
             `https://stellar.expert/explorer/testnet/tx/${hash}`
           );
           throw new Error("Transaction failed");

@@ -98,7 +98,7 @@ export default function AdminPage() {
 
   const fetchContractStats = useCallback(async () => {
     try {
-      // Note: The Stellar contract may not have these exact methods
+      // Note: The Casper contract may not have these exact methods
       // These are placeholders - adjust based on your actual contract methods
       // For now, set default values
       setContractStats({
@@ -605,7 +605,7 @@ export default function AdminPage() {
                           className="font-mono"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Enter a Stellar address (starts with G) to authorize
+                          Enter a Casper address (starts with G) to authorize
                           as an arbiter
                         </p>
                       </div>

@@ -5,7 +5,7 @@
  */
 
 import { createContext, use, useEffect, type ReactNode } from "react";
-import { getCurrentNetwork } from "@/lib/web3/stellar-config";
+import { getCurrentNetwork } from "@/lib/web3/casper-legacy-config";
 import useWalletStore from "@/store/wallet.store";
 import { useWalletRefactored } from "@/hooks/use-wallet-refactored";
 import { contractService } from "@/lib/web3/contract-service";

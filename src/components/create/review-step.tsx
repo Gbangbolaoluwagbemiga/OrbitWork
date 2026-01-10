@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, DollarSign, User, Zap } from "lucide-react";
-// Stellar doesn't use smart accounts - removed useSmartAccount import
+// Casper doesn't use smart accounts - removed useSmartAccount import
 
 interface Milestone {
   description: string;
@@ -32,7 +32,7 @@ export function ReviewStep({
   isContractPaused,
   isOnCorrectNetwork = true,
 }: ReviewStepProps) {
-  // Stellar doesn't use smart accounts
+  // Casper doesn't use smart accounts
   const isSmartAccountReady = false;
   const totalMilestoneAmount = formData.milestones.reduce(
     (sum, milestone) => sum + Number.parseFloat(milestone.amount || "0"),

@@ -1,13 +1,13 @@
 // Network Configuration
-// Note: Transitioning to Casper Network. These values are legacy Stellar config.
-export const STELLAR_NETWORKS = {
+// Note: Transitioning to Casper Network. These values are legacy Casper config.
+export const CASPER_LEGACY_NETWORKS = {
   testnet: {
     networkPassphrase: "Test SDF Network ; September 2015",
     rpcUrl: "https://soroban-testnet.stellar.org:443",
     horizonUrl: "https://horizon-testnet.stellar.org",
   },
   mainnet: {
-    networkPassphrase: "Public Global Stellar Network ; September 2015",
+    networkPassphrase: "Public Global Casper Network ; September 2015",
     rpcUrl: "https://soroban-mainnet.stellar.org:443",
     horizonUrl: "https://horizon.stellar.org",
   },
@@ -31,14 +31,14 @@ export const CONTRACTS = {
 
 // Get current network from environment
 export const getCurrentNetwork = () => {
-  const env = import.meta.env.VITE_STELLAR_NETWORK || "testnet";
+  const env = import.meta.env.VITE_CASPER_LEGACY_NETWORK || "testnet";
   return (
-    STELLAR_NETWORKS[env as keyof typeof STELLAR_NETWORKS] ||
-    STELLAR_NETWORKS.testnet
+    CASPER_LEGACY_NETWORKS[env as keyof typeof CASPER_LEGACY_NETWORKS] ||
+    CASPER_LEGACY_NETWORKS.testnet
   );
 };
 
-// Native XLM SAC (Stellar Asset Contract) addresses
+// Native XLM SAC (Casper Asset Contract - Legacy) addresses
 // These are the contract addresses for the native XLM asset contract on each network
 export const NATIVE_XLM_SAC_ADDRESSES = {
   testnet: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC", // Native XLM SAC on testnet
@@ -48,7 +48,7 @@ export const NATIVE_XLM_SAC_ADDRESSES = {
 
 // Get native XLM SAC address for current network
 export const getNativeXLMSACAddress = () => {
-  const env = import.meta.env.VITE_STELLAR_NETWORK || "testnet";
+  const env = import.meta.env.VITE_CASPER_LEGACY_NETWORK || "testnet";
   return (
     NATIVE_XLM_SAC_ADDRESSES[env as keyof typeof NATIVE_XLM_SAC_ADDRESSES] ||
     NATIVE_XLM_SAC_ADDRESSES.testnet

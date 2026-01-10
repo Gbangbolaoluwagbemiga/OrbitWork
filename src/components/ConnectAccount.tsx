@@ -1,5 +1,5 @@
 import React from "react";
-import { stellarNetwork } from "../util/stellar-constants";
+import { casperLegacyNetwork } from "../util/casper-legacy-constants";
 import FundAccountButton from "./FundAccountButton";
 import { WalletButton } from "./WalletButton";
 import NetworkPill from "./NetworkPill";
@@ -16,7 +16,7 @@ const ConnectAccount: React.FC = () => {
       }}
     >
       <WalletButton />
-      {stellarNetwork !== "PUBLIC" && <FundAccountButton />}
+      {casperLegacyNetwork !== "PUBLIC" && <FundAccountButton />}
       <NetworkPill />
     </div>
   );

@@ -160,7 +160,7 @@ export default function DashboardPage() {
       let currentLedger = 0;
       try {
         const { rpc } = await import("@stellar/stellar-sdk");
-        const { getCurrentNetwork } = await import("@/lib/web3/stellar-config");
+        const { getCurrentNetwork } = await import("@/lib/web3/casper-legacy-config");
         const network = getCurrentNetwork();
         const rpcServer = new rpc.Server(network.rpcUrl);
         const latestLedger = await rpcServer.getLatestLedger();
@@ -798,7 +798,7 @@ export default function DashboardPage() {
       );
 
       // Transaction is already confirmed via waitForConfirmation in web3-context
-      // For Stellar, we don't need to poll for receipts like Ethereum
+      // For Casper, we don't need to poll for receipts like Ethereum
       // The transaction hash is returned after confirmation
       toast({
         title: "Milestone Approved!",

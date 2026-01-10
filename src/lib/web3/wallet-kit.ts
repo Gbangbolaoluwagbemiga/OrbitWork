@@ -8,7 +8,7 @@ import {
   WalletNetwork,
   sep43Modules,
 } from "@creit.tech/stellar-wallets-kit";
-import { getCurrentNetwork } from "./stellar-config";
+import { getCurrentNetwork } from "./casper-legacy-config";
 
 const network = getCurrentNetwork();
 const walletNetwork = network.networkPassphrase.includes("Test")
