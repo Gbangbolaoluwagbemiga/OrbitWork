@@ -5,6 +5,7 @@ extern crate alloc;
 pub mod data;
 pub mod error;
 
+use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use casper_contract::{
@@ -194,14 +195,101 @@ pub extern "C" fn apply_to_job() {
 }
 
 #[no_mangle]
+pub extern "C" fn pause_job_creation() {
+    let admin_key = runtime::get_key(KEY_ADMIN).unwrap_or_revert();
+    
+    if Key::from(runtime::get_caller()) != admin_key {
+        runtime::revert(OrbitWorkError::NotAuthorized);
+    }
+
+    // Set a flag to pause job creation
+    runtime::put_key("paused", storage::new_uref(true).into());
+}
+
+#[no_mangle]
+pub extern "C" fn unpause_job_creation() {
+    let admin_key = runtime::get_key(KEY_ADMIN).unwrap_or_revert();
+    
+    if Key::from(runtime::get_caller()) != admin_key {
+        runtime::revert(OrbitWorkError::NotAuthorized);
+    }
+
+    // Remove the pause flag
+    runtime::put_key("paused", storage::new_uref(false).into());
+}
+
+#[no_mangle]
 pub extern "C" fn call() {
     use casper_types::addressable_entity::{EntryPoints, EntityEntryPoint, EntryPointAccess, EntryPointType, EntryPointPayment};
-    use casper_types::CLType;
+    use casper_types::{CLType, Parameter};
 
     let mut entry_points = EntryPoints::new();
 
+    // Register init
     entry_points.add_entry_point(EntityEntryPoint::new(
         "init",
+        alloc::vec![],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Called,
+        EntryPointPayment::Caller,
+    ));
+
+    // Register whitelist_token
+    entry_points.add_entry_point(EntityEntryPoint::new(
+        "whitelist_token",
+        alloc::vec![Parameter::new("token", CLType::Key)],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Called,
+        EntryPointPayment::Caller,
+    ));
+
+    // Register create_escrow
+    entry_points.add_entry_point(EntityEntryPoint::new(
+        "create_escrow",
+        alloc::vec![
+            Parameter::new("project_title", CLType::String),
+            Parameter::new("project_description", CLType::String),
+            Parameter::new("total_amount", CLType::U256),
+            Parameter::new("duration", CLType::U64),
+            Parameter::new("milestone_amounts", CLType::List(Box::new(CLType::U256))),
+            Parameter::new("milestone_descriptions", CLType::List(Box::new(CLType::String))),
+            Parameter::new("token", CLType::Option(Box::new(CLType::Key))),
+        ],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Called,
+        EntryPointPayment::Caller,
+    ));
+
+    // Register apply_to_job
+    entry_points.add_entry_point(EntityEntryPoint::new(
+        "apply_to_job",
+        alloc::vec![
+            Parameter::new("escrow_id", CLType::U32),
+            Parameter::new("cover_letter", CLType::String),
+            Parameter::new("proposed_timeline", CLType::U32),
+        ],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Called,
+        EntryPointPayment::Caller,
+    ));
+
+    // Register pause_job_creation
+    entry_points.add_entry_point(EntityEntryPoint::new(
+        "pause_job_creation",
+        alloc::vec![],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Called,
+        EntryPointPayment::Caller,
+    ));
+
+    // Register unpause_job_creation
+    entry_points.add_entry_point(EntityEntryPoint::new(
+        "unpause_job_creation",
         alloc::vec![],
         CLType::Unit,
         EntryPointAccess::Public,
@@ -218,4 +306,8 @@ pub extern "C" fn call() {
     );
 
     runtime::put_key("orbitwork_contract", contract_hash.into());
+    
+    // Auto-initialize the contract with the deployer as admin
+    // This is called automatically when the contract is deployed
+    init();
 }

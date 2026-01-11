@@ -57,10 +57,23 @@ export async function signDeploy(deploy: Deploy, publicKeyHex: string): Promise<
           }
           
           // Extract deploy data (might be nested)
-          const actualDeploy = deployData.deploy || deployData;
+          let actualDeploy = deployData.deploy || deployData;
           
-          // Try standard parsing first
-          signedDeploy = Deploy.fromJSON(actualDeploy);
+          // If the wallet returned a complete deploy structure, use it directly
+          // Check if it has all required fields
+          if (actualDeploy.hash && actualDeploy.header && actualDeploy.session && actualDeploy.payment) {
+            // Wallet returned a complete deploy - try to parse it
+            try {
+              signedDeploy = Deploy.fromJSON(actualDeploy);
+              console.log("✅ Successfully parsed deploy from wallet response");
+            } catch (e) {
+              console.warn("Wallet deploy structure exists but parsing failed, will try manual reconstruction:", e);
+              throw e; // Fall through to manual reconstruction
+            }
+          } else {
+            // Wallet didn't return complete structure, need manual reconstruction
+            throw new Error("Wallet response missing required deploy fields");
+          }
       } catch (parseError) {
                   console.warn("Deploy.fromJSON failed, attempting manual signature extraction. Error:", parseError);
                   
@@ -79,10 +92,18 @@ export async function signDeploy(deploy: Deploy, publicKeyHex: string): Promise<
                   }
                   
                   // Work with JSON representation to avoid Approval class issues
+                  // Get the original deploy JSON structure - this is the source of truth
                   const originalDeployJson = Deploy.toJSON(deploy);
-                  const deployToUpdate = (originalDeployJson as any).deploy || originalDeployJson;
                   
-                  if (!deployToUpdate.approvals) {
+                  // Extract the actual deploy object (might be nested in { deploy: {...} })
+                  let originalDeploy: any = (originalDeployJson as any).deploy || originalDeployJson;
+                  
+                  // Create a deep copy of the ORIGINAL deploy structure to preserve all fields exactly
+                  // This ensures payment, session, header, hash are all preserved correctly
+                  const deployToUpdate: any = JSON.parse(JSON.stringify(originalDeploy));
+                  
+                  // Only modify the approvals array - everything else stays the same
+                  if (!deployToUpdate.approvals || !Array.isArray(deployToUpdate.approvals)) {
                       deployToUpdate.approvals = [];
                   }
 
@@ -163,9 +184,63 @@ export async function signDeploy(deploy: Deploy, publicKeyHex: string): Promise<
                      throw parseError; // Re-throw original error if we can't save it
                   }
 
+                  // All fields should already be preserved from the deep copy above
+                  // Just verify critical fields are present (they should be)
+                  if (!deployToUpdate.hash || !deployToUpdate.header || !deployToUpdate.payment || !deployToUpdate.session) {
+                    console.error("❌ Critical deploy fields missing after copy:", {
+                      hasHash: !!deployToUpdate.hash,
+                      hasHeader: !!deployToUpdate.header,
+                      hasPayment: !!deployToUpdate.payment,
+                      hasSession: !!deployToUpdate.session
+                    });
+                    // Fallback: use original structure
+                    const originalJson = Deploy.toJSON(deploy);
+                    const originalDeploy = (originalJson as any).deploy || originalJson;
+                    deployToUpdate.hash = originalDeploy.hash;
+                    deployToUpdate.header = originalDeploy.header;
+                    deployToUpdate.payment = originalDeploy.payment;
+                    deployToUpdate.session = originalDeploy.session;
+                  }
+                  
+                  // Log payment structure for debugging
+                  console.log("💰 Payment structure:", JSON.stringify(deployToUpdate.payment, null, 2));
+
+                  // Before reconstructing, ensure the deploy JSON is in the correct format
+                  // The RPC expects: { hash, header, payment, session, approvals }
+                  // Make sure all fields are properly formatted
+                  
+                  // Ensure approvals are in the correct format (array of { signer, signature })
+                  if (deployToUpdate.approvals && deployToUpdate.approvals.length > 0) {
+                    deployToUpdate.approvals = deployToUpdate.approvals.map((a: any) => ({
+                      signer: a.signer,
+                      signature: a.signature
+                    }));
+                  }
+
                   // Reconstruct valid Deploy object from the updated JSON
-                  // This ensures internal consistency and serialization compatibility
-                  signedDeploy = Deploy.fromJSON(originalDeployJson);
+                  try {
+                    signedDeploy = Deploy.fromJSON(deployToUpdate);
+                    console.log("✅ Successfully reconstructed deploy with manual signature");
+                    
+                    // Verify the reconstructed deploy has approvals
+                    const reconstructedJson = Deploy.toJSON(signedDeploy);
+                    const reconstructedDeploy = (reconstructedJson as any).deploy || reconstructedJson;
+                    if (!reconstructedDeploy.approvals || reconstructedDeploy.approvals.length === 0) {
+                      console.warn("⚠️ Reconstructed deploy missing approvals, adding them back");
+                      reconstructedDeploy.approvals = deployToUpdate.approvals;
+                      signedDeploy = Deploy.fromJSON(reconstructedDeploy);
+                    }
+                  } catch (e) {
+                    console.error("❌ Failed to reconstruct deploy:", e);
+                    console.error("Deploy structure:", {
+                      hasHash: !!deployToUpdate.hash,
+                      hasHeader: !!deployToUpdate.header,
+                      hasPayment: !!deployToUpdate.payment,
+                      hasSession: !!deployToUpdate.session,
+                      approvalsCount: deployToUpdate.approvals?.length || 0
+                    });
+                    throw new Error(`Failed to reconstruct signed deploy: ${e instanceof Error ? e.message : String(e)}`);
+                  }
               }
               
               return signedDeploy || null;
@@ -194,6 +269,42 @@ async function submitDeployDirectHTTP(endpoint: string, deployJson: any): Promis
   const timeout = endpoint.startsWith('https') ? 10000 : 5000;
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   
+  // Ensure deployJson is the actual deploy object (not nested)
+  const deployToSend = (deployJson as any).deploy || deployJson;
+  
+  // Validate deploy structure
+  if (!deployToSend.hash) {
+    throw new Error("Deploy missing hash");
+  }
+  if (!deployToSend.header) {
+    throw new Error("Deploy missing header");
+  }
+  if (!deployToSend.payment) {
+    throw new Error("Deploy missing payment");
+  }
+  if (!deployToSend.session) {
+    throw new Error("Deploy missing session");
+  }
+  if (!deployToSend.approvals || !Array.isArray(deployToSend.approvals)) {
+    console.warn("⚠️ Deploy missing approvals array, adding empty array");
+    deployToSend.approvals = [];
+  }
+  
+  // Log deploy structure for debugging
+  if (endpoint === '/casper-rpc') {
+    console.log("📋 Deploy structure being sent:", {
+      hash: deployToSend.hash?.substring(0, 16) + '...',
+      approvalsCount: deployToSend.approvals?.length || 0,
+      hasHeader: !!deployToSend.header,
+      hasPayment: !!deployToSend.payment,
+      hasSession: !!deployToSend.session,
+      headerAccount: deployToSend.header?.account?.substring(0, 16) + '...',
+      paymentType: typeof deployToSend.payment,
+      paymentKeys: deployToSend.payment ? Object.keys(deployToSend.payment) : [],
+      paymentValue: deployToSend.payment ? JSON.stringify(deployToSend.payment).substring(0, 200) : 'null'
+    });
+  }
+  
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -205,7 +316,7 @@ async function submitDeployDirectHTTP(endpoint: string, deployJson: any): Promis
         jsonrpc: '2.0',
         method: 'account_put_deploy',
         params: {
-          deploy: deployJson
+          deploy: deployToSend
         }
       }),
       signal: controller.signal,
@@ -220,10 +331,18 @@ async function submitDeployDirectHTTP(endpoint: string, deployJson: any): Promis
     const result = await response.json();
     
     if (result.error) {
-      throw new Error(`RPC Error: ${result.error.message || JSON.stringify(result.error)}`);
+      const errorMsg = result.error.message || JSON.stringify(result.error);
+      const errorCode = result.error.code;
+      console.error(`RPC Error Details:`, {
+        code: errorCode,
+        message: errorMsg,
+        data: result.error.data,
+        deployHash: deployJson.hash
+      });
+      throw new Error(`RPC Error: ${errorMsg}${errorCode ? ` (Code: ${errorCode})` : ''}`);
     }
     
-    const deployHash = result.result?.deploy_hash || deployJson.hash;
+    const deployHash = result.result?.deploy_hash || deployToSend.hash;
     if (!deployHash) {
       throw new Error('No deploy hash returned from RPC');
     }
@@ -239,9 +358,131 @@ async function submitDeployDirectHTTP(endpoint: string, deployJson: any): Promis
   }
 }
 
+/**
+ * Check if a deploy succeeded on-chain
+ * Polls multiple times with increasing delays to wait for finalization
+ */
+export async function checkDeployStatus(deployHash: string, endpoint: string = '/casper-rpc', maxAttempts: number = 10): Promise<{ success: boolean; error?: string }> {
+  const httpHandler = new HttpHandler(endpoint);
+  const client = new RpcClient(httpHandler);
+  
+  // Initial wait before first check
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`🔍 Checking deploy status (attempt ${attempt}/${maxAttempts})...`);
+      const deployInfo = await client.getDeploy(deployHash);
+      
+      // Check execution results (can be executionResultsV1 or execution_results depending on API version)
+      const executionResults = (deployInfo as any).execution_results || (deployInfo as any).executionResultsV1 || [];
+      
+      if (executionResults.length === 0) {
+        // Deploy might still be pending, wait and retry
+        if (attempt < maxAttempts) {
+          const waitTime = Math.min(2000 * attempt, 10000); // Exponential backoff, max 10s
+          console.log(`⏳ Deploy still pending, waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        } else {
+          return { success: false, error: 'Deploy still pending after multiple checks' };
+        }
+      }
+      
+      const result = executionResults[0].result;
+      
+      if ('Success' in result) {
+        console.log(`✅ Deploy succeeded on-chain!`);
+        return { success: true };
+      } else if ('Failure' in result) {
+        const failure = (result as any).Failure || {};
+        // Try to extract detailed error information
+        let errorMsg = failure.error_message || 
+                      failure.message || 
+                      JSON.stringify(failure) ||
+                      'Unknown error';
+        
+        // Check for specific error codes
+        if (failure.error_code) {
+          errorMsg = `Error Code ${failure.error_code}: ${errorMsg}`;
+        }
+        
+        // Log full failure details for debugging
+        console.error(`❌ Deploy failed on-chain:`, {
+          errorMessage: errorMsg,
+          fullFailure: failure,
+          executionResult: result
+        });
+        
+        // Provide helpful hints for common errors
+        if (errorMsg.toLowerCase().includes('not authorized') || 
+            errorMsg.toLowerCase().includes('authorization') ||
+            errorMsg.toLowerCase().includes('revert') ||
+            (failure.error_code && failure.error_code === 1)) {
+          console.warn('💡 This might be an authorization error. Ensure:');
+          console.warn('   1. The contract was initialized with init()');
+          console.warn('   2. You are calling from the admin address');
+          console.warn('   3. The admin key exists in the contract state');
+        }
+        
+        return { success: false, error: errorMsg };
+      }
+      
+      // Unknown status, retry
+      if (attempt < maxAttempts) {
+        const waitTime = Math.min(2000 * attempt, 10000);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      return { success: false, error: 'Unknown deploy status' };
+    } catch (error: any) {
+      console.warn(`⚠️ Status check attempt ${attempt} failed: ${error.message}`);
+      
+      // If it's a "not found" error, the deploy might still be pending
+      if (error.message?.includes('not found') || error.message?.includes('Not found')) {
+        if (attempt < maxAttempts) {
+          const waitTime = Math.min(2000 * attempt, 10000);
+          console.log(`⏳ Deploy not found yet, waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        } else {
+          return { success: false, error: 'Deploy not found after multiple attempts' };
+        }
+      }
+      
+      // For other errors, retry a few times then give up
+      if (attempt < maxAttempts && attempt < 3) {
+        const waitTime = 2000;
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      return { success: false, error: `Status check failed: ${error.message}` };
+    }
+  }
+  
+  return { success: false, error: 'Deploy status check timed out' };
+}
+
 export async function sendDeploy(deploy: Deploy): Promise<string> {
   // Convert deploy to JSON for direct HTTP submission
-  const deployJson = Deploy.toJSON(deploy);
+  // Deploy.toJSON() might return { deploy: {...} } or just the deploy object
+  let deployJsonRaw = Deploy.toJSON(deploy);
+  
+  // If it's a Deploy object, convert to JSON
+  if (deployJsonRaw instanceof Deploy) {
+    deployJsonRaw = Deploy.toJSON(deployJsonRaw);
+  }
+  
+  // Extract the actual deploy object (handle nested structure)
+  let deployJson: any = (deployJsonRaw as any).deploy || deployJsonRaw;
+  
+  // If deployJson is still a Deploy instance (shouldn't happen, but be safe)
+  if (deployJson instanceof Deploy) {
+    deployJson = Deploy.toJSON(deployJson);
+    deployJson = (deployJson as any).deploy || deployJson;
+  }
   
   // Filter and prioritize endpoints - use proxy first (bypasses CORS)
   const endpoints = [
@@ -383,10 +624,10 @@ export async function getCasperBalance(publicKeyHex: string, forceRefresh: boole
       let balanceInMotes: string | number | null = null;
       
       // Method 1: getActiveAccountBalance (if available)
-      if (provider.getActiveAccountBalance) {
+      if ('getActiveAccountBalance' in provider && typeof provider.getActiveAccountBalance === 'function') {
         console.log("Attempting to fetch balance from Casper Wallet extension (getActiveAccountBalance)...");
         try {
-          balanceInMotes = await provider.getActiveAccountBalance();
+          balanceInMotes = await (provider as any).getActiveAccountBalance();
         } catch (e) {
           console.warn("getActiveAccountBalance failed:", e);
         }
@@ -433,34 +674,34 @@ export async function getCasperBalance(publicKeyHex: string, forceRefresh: boole
     try {
       console.log(`Attempting to fetch balance from RPC ${endpoint}...`);
       const httpHandler = new HttpHandler(endpoint);
-      const client = new RpcClient(httpHandler);
-      
-      const publicKey = PublicKey.fromHex(publicKeyHex);
-      
-      // queryLatestBalance returns QueryBalanceResult which contains CLValueUInt512
-      const result = await client.queryLatestBalance(
-        PurseIdentifier.fromPublicKey(publicKey)
-      );
-      
-      // Convert motes to CSPR (1 CSPR = 1,000,000,000 motes)
-      // result.balance is CLValueUInt512, getValue() returns BigNumber
-      const csprBalance = result.balance.getValue().div(1_000_000_000).toString();
+    const client = new RpcClient(httpHandler);
+    
+    const publicKey = PublicKey.fromHex(publicKeyHex);
+    
+    // queryLatestBalance returns QueryBalanceResult which contains CLValueUInt512
+    const result = await client.queryLatestBalance(
+      PurseIdentifier.fromPublicKey(publicKey)
+    );
+    
+    // Convert motes to CSPR (1 CSPR = 1,000,000,000 motes)
+    // result.balance is CLValueUInt512, getValue() returns BigNumber
+    const csprBalance = result.balance.getValue().div(1_000_000_000).toString();
       console.log("✅ Successfully fetched Casper Balance:", csprBalance, "CSPR from", endpoint);
       // Cache the successful balance
       localStorage.setItem(`casper_balance_${publicKeyHex}`, csprBalance);
-      return csprBalance;
-    } catch (error) {
+    return csprBalance;
+  } catch (error) {
       console.warn(`Failed to get balance from ${endpoint}:`, error);
       
       // If this is the last endpoint, log detailed error
       if (i === endpoints.length - 1) {
         console.error("❌ All RPC endpoints failed. Unable to fetch balance for key:", publicKeyHex);
-        if (error instanceof Error) {
-          console.error("Error message:", error.message);
-          console.error("Error stack:", error.stack);
-        } else {
-          console.error("Unknown error:", error);
-        }
+    if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+    } else {
+        console.error("Unknown error:", error);
+    }
       }
       // Continue to next endpoint
     }
