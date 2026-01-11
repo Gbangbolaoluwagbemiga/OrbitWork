@@ -14,11 +14,12 @@ const isLocalhost = typeof window !== 'undefined' &&
 export const CasperNetwork: Record<'TESTNET' | 'MAINNET', NetworkConfig> = {
   TESTNET: {
     name: "Casper Testnet",
-    // Connect directly to avoid proxy issues
-    nodeUrl: "http://136.243.187.84:7777/rpc", // Community testnet node
+    // Use HTTPS first (works when HTTP is blocked)
+    nodeUrl: "https://node.testnet.casper.network/rpc",
     fallbackUrls: [
-      "/casper-rpc", // Try local proxy as fallback
-      "http://195.201.174.222:7777/rpc", // Alternative community node
+      "https://rpc.testnet.casperlabs.io/rpc",
+      "http://136.243.187.84:7777/rpc", // HTTP fallback
+      "http://195.201.174.222:7777/rpc",
       "http://65.21.235.219:7777/rpc",
     ],
     chainName: "casper-test",

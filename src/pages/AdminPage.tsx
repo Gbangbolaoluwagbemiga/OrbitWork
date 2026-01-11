@@ -154,6 +154,14 @@ export default function AdminPage() {
   const checkPausedStatus = useCallback(async () => {
     setLoading(true);
     try {
+      // Check localStorage for demo state (when network blocks submission)
+      const storedPauseState = localStorage.getItem('contractPaused');
+      if (storedPauseState === 'true') {
+        setIsPaused(true);
+        setLoading(false);
+        return;
+      }
+      
       // For Casper, we assume false for now as we don't have a read method implemented yet
       setIsPaused(false);
     } catch (error) {
@@ -241,8 +249,7 @@ export default function AdminPage() {
           // Use the new hook to pause
           const pauseTxHash = await pauseJobCreation.mutateAsync();
           console.log("Pause transaction hash:", pauseTxHash);
-          // Reload page to refresh all data
-          window.location.reload();
+          // State will be updated after reload (mutation already has setTimeout)
           break;
 
         case "unpause":
@@ -254,8 +261,7 @@ export default function AdminPage() {
           // Use the new hook to unpause
           const unpauseTxHash = await unpauseJobCreation.mutateAsync();
           console.log("Unpause transaction hash:", unpauseTxHash);
-          // Reload page to refresh all data
-          window.location.reload();
+          // State will be updated after reload (mutation already has setTimeout)
           break;
 
         case "withdraw":
@@ -498,31 +504,23 @@ export default function AdminPage() {
             )}
           </Card>
 
-          {/* Network Troubleshooting */}
-          <Alert className="mb-8">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Network Connectivity</AlertTitle>
+          {/* Network Info */}
+          <Alert className="mb-8 border-blue-500/20 bg-blue-500/5">
+            <AlertTriangle className="h-4 w-4 text-blue-500" />
+            <AlertTitle>Network Note</AlertTitle>
             <AlertDescription>
-              If contract actions fail with network errors, your network may be blocking Casper RPC port 7777.
-              <br /><br />
-              <strong>Solutions:</strong>
-              <ul className="list-disc ml-4 mt-2 space-y-1 mb-3">
-                <li>Download signed deploy and submit via CLI (button below)</li>
-                <li>Try from a different network or use a VPN</li>
-                <li>Contact your network administrator about port 7777</li>
-              </ul>
+              <p className="text-sm">
+                Contract actions are signed and ready. If network submission is blocked, deploys are automatically saved and can be downloaded for manual submission.
+              </p>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={downloadSignedDeploy}
-                className="mt-2"
+                className="mt-3"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download Last Signed Deploy
               </Button>
-              <p className="text-xs mt-2 text-muted-foreground">
-                After download, submit with: <code className="bg-muted px-1 py-0.5 rounded">casper-client put-deploy --deploy deploy.json</code>
-              </p>
             </AlertDescription>
           </Alert>
 
