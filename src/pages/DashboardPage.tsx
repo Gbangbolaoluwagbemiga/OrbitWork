@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { useWeb3 } from "@/hooks/use-web3";
+import { useCasper } from "@/contexts/casper-context";
 import { useToast } from "@/hooks/use-toast";
-import { CONTRACTS } from "@/lib/web3/config";
+import { getNextEscrowId, getEscrow } from "@/lib/casper/casper-contract-service";
 
 import {
   useNotifications,
@@ -87,7 +87,7 @@ const getDaysLeftMessage = (
 };
 
 export default function DashboardPage() {
-  const { wallet, getContract } = useWeb3();
+  const casper = useCasper();
   const { toast } = useToast();
   const { addCrossWalletNotification } = useNotifications();
   const [escrows, setEscrows] = useState<Escrow[]>([]);
@@ -144,12 +144,8 @@ export default function DashboardPage() {
         return;
       }
 
-      // Use ContractService instead of contract.call - it reads from blockchain
-      const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
-
-      // Get next escrow ID from blockchain (not hardcoded)
-      const nextEscrowId = await contractService.getNextEscrowId();
+      // Use Casper contract service - reads from Casper blockchain
+      const nextEscrowId = await getNextEscrowId();
       console.log(
         `[DashboardPage] next_escrow_id from blockchain: ${nextEscrowId}`
       );
@@ -181,7 +177,7 @@ export default function DashboardPage() {
       for (let i = 1; i <= maxEscrowsToCheck; i++) {
         try {
           console.log(`[DashboardPage] Checking escrow ${i}...`);
-          const escrowData = await contractService.getEscrow(i);
+          const escrowData = await getEscrow(i);
 
           if (!escrowData) {
             console.log(`[DashboardPage] Escrow ${i} does not exist`);
@@ -638,7 +634,7 @@ export default function DashboardPage() {
         escrow_id: Number(escrowId),
         milestone_index: milestoneIndex,
         reason: "Disputed by client",
-        disputer: wallet.address || "",
+        disputer: casper.address || "",
       });
 
       toast({
@@ -700,7 +696,7 @@ export default function DashboardPage() {
           freelancerName:
             wallet.address!.slice(0, 6) + "..." + wallet.address!.slice(-4),
         }),
-        wallet.address || undefined, // Client address
+        casper.address || undefined, // Client address
         freelancerAddress // Freelancer address
       );
 
@@ -728,7 +724,7 @@ export default function DashboardPage() {
         escrow_id: Number(escrowId),
         milestone_index: 0,
         reason: "General dispute",
-        disputer: wallet.address || "",
+        disputer: casper.address || "",
       });
 
       toast({
@@ -815,7 +811,7 @@ export default function DashboardPage() {
             wallet.address.slice(0, 6) + "..." + wallet.address.slice(-4),
           projectTitle: escrow.projectDescription || `Project #${escrowId}`,
         }),
-        wallet.address || undefined, // Client address
+        casper.address || undefined, // Client address
         freelancerAddress // Freelancer address
       );
 
@@ -895,7 +891,7 @@ export default function DashboardPage() {
         escrow_id: Number(escrowId),
         milestone_index: milestoneIndex,
         reason: reason,
-        depositor: wallet.address || "",
+        depositor: casper.address || "",
       });
 
       toast({

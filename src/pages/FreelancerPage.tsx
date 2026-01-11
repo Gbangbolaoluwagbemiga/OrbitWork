@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useWeb3 } from "@/hooks/use-web3";
-import { CONTRACTS } from "@/lib/web3/config";
+import { useCasper } from "@/contexts/casper-context";
+import { getNextEscrowId, getEscrow } from "@/lib/casper/casper-contract-service";
 
 import {
   useNotifications,
@@ -197,7 +197,7 @@ const formatDate = (timestamp: number) => {
 };
 
 export default function FreelancerPage() {
-  const { wallet, getContract } = useWeb3();
+  const casper = useCasper();
   const { addNotification, addCrossWalletNotification } = useNotifications();
   // Casper doesn't use smart accounts
   // const { executeTransaction, isSmartAccountReady } = useSmartAccount();
@@ -253,16 +253,13 @@ export default function FreelancerPage() {
       setLoading(true);
     }
     try {
-      if (!wallet.isConnected || !wallet.address) {
+      if (!casper.isConnected || !casper.address) {
         return;
       }
 
-      // Use ContractService instead of contract.call - it reads from blockchain
-      const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
-
-      // Get next escrow ID from blockchain (not hardcoded)
-      const nextEscrowId = await contractService.getNextEscrowId();
+      // Use Casper contract service - reads from Casper blockchain
+      const { getNextEscrowId, getEscrow } = await import("@/lib/casper/casper-contract-service");
+      const nextEscrowId = await getNextEscrowId();
       console.log(
         `[FreelancerPage] next_escrow_id from blockchain: ${nextEscrowId}`
       );
@@ -293,7 +290,7 @@ export default function FreelancerPage() {
       for (let i = 1; i <= maxEscrowsToCheck; i++) {
         try {
           console.log(`[FreelancerPage] Checking escrow ${i}...`);
-          const escrowData = await contractService.getEscrow(i);
+          const escrowData = await getEscrow(i);
 
           if (!escrowData) {
             console.log(`[FreelancerPage] Escrow ${i} does not exist`);
@@ -639,7 +636,8 @@ export default function FreelancerPage() {
       const { ContractService } = await import("@/lib/web3/contract-service");
       const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
-      await contractService.startWork(Number(escrowId), wallet.address);
+      // TODO: Implement startWork for Casper
+      throw new Error("startWork not yet implemented for Casper");
 
       toast({
         title: "Work started!",
@@ -657,7 +655,7 @@ export default function FreelancerPage() {
             escrows.find((e) => e.id === escrowId)?.projectTitle ||
             `Project #${escrowId}`,
           freelancerName:
-            wallet.address!.slice(0, 6) + "..." + wallet.address!.slice(-4),
+            casper.address!.slice(0, 6) + "..." + casper.address!.slice(-4),
         }),
         clientAddress, // Client address
         wallet.address || undefined // Freelancer address
@@ -914,7 +912,7 @@ export default function FreelancerPage() {
       addCrossWalletNotification(
         createMilestoneNotification("submitted", escrowId, milestoneIndex, {
           freelancerName:
-            wallet.address!.slice(0, 6) + "..." + wallet.address!.slice(-4),
+            casper.address!.slice(0, 6) + "..." + casper.address!.slice(-4),
           projectTitle: escrow?.projectTitle || `Project #${escrowId}`,
         }),
         clientAddress, // Client address
@@ -971,16 +969,8 @@ export default function FreelancerPage() {
         description: "Submitting transaction to resubmit your milestone",
       });
 
-      // Use ContractService resubmitMilestone for rejected milestones
-      const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
-
-      await contractService.resubmitMilestone({
-        escrow_id: Number(escrowId),
-        milestone_index: milestoneIndex,
-        description: description,
-        beneficiary: wallet.address || "",
-      });
+      // TODO: Implement resubmit milestone for Casper
+      throw new Error("resubmitMilestone not yet implemented for Casper");
 
       // Transaction is already confirmed via waitForConfirmation in web3-context
       // For Casper, we don't need to poll for receipts like Ethereum
@@ -998,7 +988,7 @@ export default function FreelancerPage() {
       addNotification(
         createMilestoneNotification("submitted", escrowId, milestoneIndex, {
           freelancerName:
-            wallet.address!.slice(0, 6) + "..." + wallet.address!.slice(-4),
+            casper.address!.slice(0, 6) + "..." + casper.address!.slice(-4),
           projectTitle: escrow?.projectTitle || `Project #${escrowId}`,
         }),
         clientAddress ? [clientAddress] : undefined // Notify the client
@@ -1049,15 +1039,8 @@ export default function FreelancerPage() {
       });
 
       // Use ContractService instead of contract.send
-      const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
-
-      await contractService.disputeMilestone({
-        escrow_id: Number(escrowId),
-        milestone_index: milestoneIndex,
-        reason: reason,
-        disputer: wallet.address || "",
-      });
+      // TODO: Implement dispute milestone for Casper
+      throw new Error("disputeMilestone not yet implemented for Casper");
 
       toast({
         title: "Dispute Opened!",
@@ -1069,7 +1052,7 @@ export default function FreelancerPage() {
         createMilestoneNotification("disputed", escrowId, milestoneIndex, {
           reason: reason,
           freelancerName:
-            wallet.address!.slice(0, 6) + "..." + wallet.address!.slice(-4),
+            casper.address!.slice(0, 6) + "..." + casper.address!.slice(-4),
         })
       );
 
@@ -1088,7 +1071,7 @@ export default function FreelancerPage() {
 
 
 
-  if (!wallet.isConnected) {
+  if (!casper.isConnected) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">

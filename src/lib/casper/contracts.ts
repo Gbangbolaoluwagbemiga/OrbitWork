@@ -4,10 +4,11 @@ import {
   StoredContractByHash,
   Args,
   CLValue,
-  CLType,
   PublicKey,
   DeployHeader,
-  ContractHash
+  ContractHash,
+  CLValueOption,
+  CLTypeOption
 } from "casper-js-sdk";
 import { DEFAULT_NETWORK } from "./casper-config";
 
@@ -51,16 +52,28 @@ export function createEscrowDeploy(
 
   const contractHash = ContractHash.fromJSON(ORBITWORK_CONTRACT_HASH.replace("hash-", ""));
 
-  // Handle optional token parameter (Option<Key>) - contract requires this even if None
+  // Handle optional token parameter (Option<Key>)
+  // For native CSPR, create Option::None using CLValueOption.fromBytes
   let tokenValue: CLValue;
   if (params.token && params.token.trim() !== "") {
-    // Token is provided, create Option with Some value
-    const tokenKey = CLValue.newCLKey(PublicKey.fromHex(params.token.trim()));
-    tokenValue = CLValue.newCLOption(CLType.Key, tokenKey);
+    // Token is provided - create Option::Some
+    const tokenHash = params.token.trim().replace(/^hash-/, "");
+    const tokenKey = ContractHash.fromJSON(tokenHash) as any;
+    const tokenCLKey = CLValue.newCLKey(tokenKey);
+    tokenValue = (CLValue.newCLOption as any)(tokenCLKey.type, tokenCLKey);
   } else {
-    // No token provided, use None (Option::None)
-    // For None, pass null as the value
-    tokenValue = CLValue.newCLOption(CLType.Key, null as any);
+    // No token (native CSPR) - create Option::None using fromBytes with 0x00
+    // Create a dummy key to get the Key type
+    const dummyKeyObj = ContractHash.fromJSON("0000000000000000000000000000000000000000000000000000000000000000") as any;
+    const dummyKey = CLValue.newCLKey(dummyKeyObj);
+    const keyType = dummyKey.type;
+    const optType = new CLTypeOption(keyType);
+    const optNoneResult = CLValueOption.fromBytes(Uint8Array.from([0x00]), optType);
+    const optNoneClOption = optNoneResult.result;
+    // Create CLValue and set the option property
+    const clValue = CLValue.newCLOption(null, keyType) as any;
+    clValue.option = optNoneClOption;
+    tokenValue = clValue;
   }
 
   const args = Args.fromMap({
@@ -70,7 +83,7 @@ export function createEscrowDeploy(
     "duration": CLValue.newCLUint64(params.duration),
     "milestone_amounts": CLValue.newCLList(milestoneAmounts.length > 0 ? milestoneAmounts[0].type : CLValue.newCLUInt256(0).type, milestoneAmounts),
     "milestone_descriptions": CLValue.newCLList(milestoneDescriptions.length > 0 ? milestoneDescriptions[0].type : CLValue.newCLString("").type, milestoneDescriptions),
-    "token": tokenValue,
+    "token": tokenValue, // Always include token parameter (Option::Some or Option::None)
   });
 
   const session = new ExecutableDeployItem();

@@ -20,7 +20,6 @@ import {
 } from "@/hooks/use-admin";
 import { useCasper } from "@/contexts/casper-context";
 import { ORBITWORK_CONTRACT_HASH } from "@/lib/casper/contracts";
-import { DEFAULT_NETWORK } from "@/lib/casper/casper-config";
 
 // Unused imports removed: AdminHeader, AdminStats, ContractControls, AdminLoading, DisputeResolution (Stellar-only)
 // import { DisputeResolution } from "@/components/admin/dispute-resolution";

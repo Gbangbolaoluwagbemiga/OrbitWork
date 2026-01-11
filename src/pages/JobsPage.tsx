@@ -3,13 +3,8 @@ import { Card } from "@/components/ui/card";
 import { useCasper } from "@/contexts/casper-context";
 import { useCasperApply } from "@/hooks/use-casper-apply";
 import { useToast } from "@/hooks/use-toast";
-import { CONTRACTS } from "@/lib/web3/config";
-import { contractService } from "@/lib/web3/contract-service";
+import { getNextEscrowId, getEscrow, isJobCreationPaused } from "@/lib/casper/casper-contract-service";
 
-import {
-  useNotifications,
-  createApplicationNotification,
-} from "@/contexts/notification-context";
 import type { Escrow } from "@/lib/web3/types";
 import { Briefcase } from "lucide-react";
 import { JobsHeader } from "@/components/jobs/jobs-header";
@@ -30,7 +25,6 @@ export default function JobsPage() {
   const casper = useCasper();
   const { applyToJob } = useCasperApply();
   const { toast } = useToast();
-  const { addNotification } = useNotifications();
   const [jobs, setJobs] = useState<Escrow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,7 +84,7 @@ export default function JobsPage() {
 
   const checkContractPauseStatus = async () => {
     try {
-      const isPaused = await contractService.isJobCreationPaused();
+      const isPaused = await isJobCreationPaused();
       setIsContractPaused(isPaused);
     } catch (error) {
       console.error("Error checking pause status:", error);
@@ -100,8 +94,8 @@ export default function JobsPage() {
 
   const countOngoingProjects = async () => {
     try {
-      // Use contractService for Casper
-      const escrowCount = await contractService.getNextEscrowId();
+      // Use Casper contract service
+      const escrowCount = await getNextEscrowId();
 
       let ongoingCount = 0;
 
@@ -109,9 +103,9 @@ export default function JobsPage() {
       if (escrowCount > 1) {
         for (let i = 1; i < escrowCount; i++) {
           try {
-            const escrow = await contractService.getEscrow(i);
+            const escrow = await getEscrow(i);
             if (!escrow) continue;
-            const escrowSummary = [escrow.creator || escrow.depositor, escrow.freelancer, null, escrow.status];
+            const escrowSummary = [escrow.creator, escrow.freelancer, null, escrow.status];
 
             const payerAddress = escrowSummary[0]; // depositor/client
             const beneficiaryAddress = escrowSummary[1]; // beneficiary/freelancer
@@ -121,11 +115,11 @@ export default function JobsPage() {
             const isPayer =
               payerAddress &&
               userAddress &&
-              payerAddress.toLowerCase() === userAddress.toLowerCase();
+              String(payerAddress).toLowerCase() === String(userAddress).toLowerCase();
             const isBeneficiary =
               beneficiaryAddress &&
               userAddress &&
-              beneficiaryAddress.toLowerCase() === userAddress.toLowerCase();
+              String(beneficiaryAddress).toLowerCase() === String(userAddress).toLowerCase();
 
             // Count projects where user is involved (as client or freelancer)
             if (isPayer || isBeneficiary) {
@@ -158,10 +152,9 @@ export default function JobsPage() {
 
       for (const job of jobs) {
         try {
-          const hasAppliedResult = await contractService.hasUserApplied(
-            Number.parseInt(job.id, 10),
-            casper.address!
-          );
+          // TODO: Implement hasUserApplied for Casper
+          // For now, check local state only
+          const hasAppliedResult = hasApplied[job.id] || false;
           applicationStatus[job.id] = hasAppliedResult;
           console.log(
             `[checkApplicationStatus] Job ${job.id} hasApplied: ${hasAppliedResult}`
@@ -207,31 +200,15 @@ export default function JobsPage() {
   const fetchOpenJobs = async () => {
     setLoading(true);
     try {
-      // Fetch all data from blockchain via contractService.getEscrow()
-      // This ensures all displayed data is from the blockchain, not mock data
+      // Fetch all data from blockchain via Casper contract service
+      // This ensures all displayed data is from the Casper blockchain, not mock data
 
-      // Get current ledger sequence once (needed for timestamp conversion)
-      let currentLedger = 0;
-      try {
-        const { rpc } = await import("@stellar/stellar-sdk");
-        const { getCurrentNetwork } = await import("@/lib/web3/casper-legacy-config");
-        const network = getCurrentNetwork();
-        const rpcServer = new rpc.Server(network.rpcUrl);
-        const latestLedger = await rpcServer.getLatestLedger();
-        currentLedger = latestLedger.sequence;
-      } catch (error) {
-        console.warn(
-          "Could not fetch current ledger, using approximate timestamp:",
-          error
-        );
-        // Fallback: use current time as approximation
-        const SECONDS_PER_LEDGER = 5;
-        currentLedger = Math.floor(Date.now() / 1000 / SECONDS_PER_LEDGER);
-      }
+      // For Casper, we use timestamps directly (created_at from contract)
+      // No need for ledger sequence conversion
 
-      // Get total number of escrows using contract service
+      // Get total number of escrows using Casper contract service
       // NO TIMEOUT - let it complete fully to get accurate count from blockchain
-      const escrowCount = await contractService.getNextEscrowId();
+      const escrowCount = await getNextEscrowId();
 
       // Set the actual escrow count from blockchain
       // escrowCount is the next available ID, so actual count is escrowCount - 1
@@ -257,7 +234,7 @@ export default function JobsPage() {
       if (escrowsToCheck > 0) {
         for (let i = 1; i <= escrowsToCheck; i++) {
           try {
-            const escrowData = await contractService.getEscrow(i);
+            const escrowData = await getEscrow(i);
             if (!escrowData) {
               continue;
             }
@@ -286,52 +263,38 @@ export default function JobsPage() {
 
               // Only check blockchain if not already in local state
               if (!userHasApplied && casper.address) {
-                try {
-                  userHasApplied = await contractService.hasUserApplied(
-                    i,
-                    casper.address
-                  );
+                // TODO: Implement hasUserApplied for Casper
+                // For now, set to false - applications are stored in dictionary
+                userHasApplied = false;
                   console.log(
-                    `User ${casper.address} has applied to job ${i}:`,
+                  `User ${casper.address} has applied to job ${i}:`,
                     userHasApplied
                   );
-                } catch (error) {
-                  console.warn(
-                    `Error checking if user applied to job ${i}:`,
-                    error
-                  );
-                  userHasApplied = false;
-                }
               }
 
-              // IMPORTANT: created_at and deadline are LEDGER SEQUENCE NUMBERS, not timestamps!
-              // Casper ledgers close approximately every 5 seconds
-              // Duration = (deadline - created_at) * 5 seconds
-              const SECONDS_PER_LEDGER = 5;
-              const ledgerDiff = escrowData.deadline - escrowData.created_at;
-              const durationInSeconds = ledgerDiff * SECONDS_PER_LEDGER;
-              const durationInDays = Math.max(
-                0,
-                Math.round(durationInSeconds / (24 * 60 * 60))
-              );
-
-              // Calculate approximate timestamp: current time - (current_ledger - created_at) * 5 seconds
-              const ledgersAgo = currentLedger - escrowData.created_at;
-              const secondsAgo = ledgersAgo * SECONDS_PER_LEDGER;
-              const approxCreatedAt = Date.now() - secondsAgo * 1000;
+              // For Casper, timestamps are in milliseconds (blocktime)
+              // created_at and deadline are u64 timestamps from get_blocktime()
+              const createdTimestamp = escrowData.created_at || Date.now();
+              const deadlineTimestamp = escrowData.deadline || 0;
+              const durationInSeconds = deadlineTimestamp > createdTimestamp 
+                ? Math.max(0, deadlineTimestamp - createdTimestamp) / 1000 
+                : 0;
+              const durationInDays = Math.ceil(durationInSeconds / (60 * 60 * 24));
+              // Casper timestamps are already in milliseconds
+              const approxCreatedAt = typeof createdTimestamp === 'number' ? createdTimestamp : Date.now();
 
               // Convert contract data to our Escrow type
-              // All data is from blockchain - fetched via contractService.getEscrow()
+              // All data is from blockchain - fetched via Casper contract service
               const job: Escrow = {
                 id: i.toString(),
                 payer: escrowData.creator, // depositor/creator (from blockchain)
                 beneficiary: escrowData.freelancer || zeroAddress, // beneficiary/freelancer (from blockchain)
                 token: escrowData.token || "", // token (from blockchain)
-                totalAmount: escrowData.amount, // totalAmount (from blockchain)
+                totalAmount: escrowData.amount || "0", // totalAmount (from blockchain)
                 releasedAmount: "0", // paidAmount - would need to calculate from milestones
                 status: getStatusFromNumber(escrowData.status), // status (from blockchain)
-                createdAt: approxCreatedAt, // Approximate timestamp from ledger sequence
-                duration: durationInDays, // Duration in days (calculated correctly from ledger sequence)
+                createdAt: approxCreatedAt, // Timestamp from Casper blockchain
+                duration: durationInDays, // Duration in days (calculated from timestamps)
                 milestones: [], // Would need to fetch milestones separately
                 projectTitle: escrowData.project_title || "", // projectTitle (from blockchain)
                 projectDescription: escrowData.project_description || "", // projectDescription (from blockchain)

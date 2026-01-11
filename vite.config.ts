@@ -50,7 +50,7 @@ export default defineConfig(() => {
             proxy.on('error', (err, _req, _res) => {
               console.log('❌ Proxy error:', err);
             });
-            proxy.on('proxyReq', (proxyReq, req, _res) => {
+            proxy.on('proxyReq', (proxyReq, _req, _res) => {
               console.log('✅ Proxying request to:', proxyReq.path);
             });
           },
