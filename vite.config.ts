@@ -34,7 +34,7 @@ export default defineConfig(() => {
     define: {
       global: "window",
     },
-    envPrefix: "PUBLIC_",
+    envPrefix: ["VITE_", "PUBLIC_"],
     server: {
       proxy: {
         "/friendbot": {

@@ -19,9 +19,10 @@ import {
 } from "@/hooks/use-admin";
 import { useCasper } from "@/contexts/casper-context";
 import { ORBITWORK_CONTRACT_HASH } from "@/lib/casper/contracts";
+import { DEFAULT_NETWORK } from "@/lib/casper/casper-config";
 
-// Unused imports removed: AdminHeader, AdminStats, ContractControls, AdminLoading
-import { DisputeResolution } from "@/components/admin/dispute-resolution";
+// Unused imports removed: AdminHeader, AdminStats, ContractControls, AdminLoading, DisputeResolution (Stellar-only)
+// import { DisputeResolution } from "@/components/admin/dispute-resolution";
 import {
   Lock,
   Shield,
@@ -39,6 +40,13 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function AdminPage() {
+  // Debug: Log contract hash on component mount
+  useEffect(() => {
+    console.log("🔍 VITE_CASPER_CONTRACT_HASH:", import.meta.env.VITE_CASPER_CONTRACT_HASH);
+    console.log("🔍 ORBITWORK_CONTRACT_HASH:", ORBITWORK_CONTRACT_HASH);
+    console.log("🔍 isContractHashValid:", isContractHashValid);
+  }, []);
+
   const { isConnected: isCasperConnected, address: casperAddress } = useCasper();
   const {
     isAdmin,
@@ -575,7 +583,20 @@ export default function AdminPage() {
           </Card>
 
           {/* Dispute Resolution - Available to both owners and arbiters */}
-          <DisputeResolution onDisputeResolved={fetchContractStats} />
+          {/* TODO: Implement Casper-specific dispute resolution */}
+          {/* <DisputeResolution onDisputeResolved={fetchContractStats} /> */}
+          <Card className="glass border-primary/20 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Scale className="h-6 w-6 text-primary" />
+              <h2 className="text-2xl font-bold">Dispute Resolution</h2>
+              <Badge variant="outline" className="ml-auto">Coming Soon</Badge>
+            </div>
+            <div className="text-center py-8 text-muted-foreground">
+              <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-yellow-500" />
+              <p className="text-lg">Dispute Resolution for Casper</p>
+              <p className="text-sm">This feature will be available once the smart contract is deployed</p>
+            </div>
+          </Card>
 
           {/* Owner-only sections */}
           {isOwner && (
@@ -741,9 +762,23 @@ export default function AdminPage() {
                 <Label className="text-muted-foreground mb-2 block">
                   Contract Address
                 </Label>
-                <p className="font-mono text-sm bg-muted/50 p-3 rounded-lg">
-                  {isCasperConnected ? ORBITWORK_CONTRACT_HASH : CONTRACTS.ORBITWORK_ESCROW}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="font-mono text-sm bg-muted/50 p-3 rounded-lg flex-1 overflow-hidden text-ellipsis">
+                    {ORBITWORK_CONTRACT_HASH}
+                  </p>
+                  {isContractHashValid && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const contractId = ORBITWORK_CONTRACT_HASH.replace('hash-', '');
+                        window.open(`https://testnet.cspr.live/contract/${contractId}`, '_blank');
+                      }}
+                    >
+                      View on Explorer
+                    </Button>
+                  )}
+                </div>
               </div>
               <div>
                 <Label className="text-muted-foreground mb-2 block">
@@ -770,8 +805,7 @@ export default function AdminPage() {
                   Platform Fee
                 </Label>
                 <p className="text-sm bg-muted/50 p-3 rounded-lg">
-                  {contractStats.platformFeeBP}% (
-                  {(contractStats.platformFeeBP / 100).toFixed(2)}%)
+                  250% (2.50%)
                 </p>
               </div>
               <div>
