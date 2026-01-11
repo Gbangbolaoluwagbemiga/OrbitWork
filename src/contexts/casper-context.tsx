@@ -26,14 +26,21 @@ export function CasperProvider({ children }: { children: ReactNode }) {
 
   const refreshBalance = useCallback(async () => {
     if (address) {
-      const bal = await getCasperBalance(address);
-      // Only update if we got a valid balance (not "0" from an error)
-      setBalance(prevBalance => {
-        if (bal !== "0" || prevBalance === "0") {
-          return bal;
-        }
-        return prevBalance;
-      });
+      // Clear cached balance to force fresh fetch
+      localStorage.removeItem(`casper_balance_${address}`);
+      
+      // Force refresh from wallet/RPC
+      const bal = await getCasperBalance(address, true);
+      
+      // Always update with fresh balance
+      if (bal && bal !== "0") {
+        setBalance(bal);
+        console.log("✅ Balance refreshed:", bal, "CSPR");
+      } else if (bal === "0") {
+        // If we get 0, it might be a network issue, but update anyway
+        setBalance(bal);
+        console.warn("⚠️ Balance refresh returned 0 - network may be down");
+      }
     }
   }, [address]);
 
@@ -83,11 +90,15 @@ export function CasperProvider({ children }: { children: ReactNode }) {
       }
       
       // Try to fetch fresh balance, but don't wait for it
-      getCasperBalance(savedAddress).then(bal => {
-        if (bal !== "0") {
+      getCasperBalance(savedAddress, true).then(bal => {
+        // Always update with fresh balance if we get one
+        if (bal && bal !== "0") {
           setBalance(bal);
+          console.log("✅ Updated balance from network:", bal, "CSPR");
+        } else if (bal === "0" && cachedBalance) {
+          // Only keep cached if fresh fetch returns 0 (might be network issue)
+          console.warn("⚠️ Fresh balance fetch returned 0, keeping cached:", cachedBalance);
         }
-        // If it's "0" and we have a cached balance, keep the cached one
       }).catch(err => {
         console.warn("Failed to fetch balance on startup, using cached value:", err);
       });

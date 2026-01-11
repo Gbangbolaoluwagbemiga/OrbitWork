@@ -36,14 +36,31 @@ export async function signDeploy(deploy: Deploy, publicKeyHex: string): Promise<
       let signedDeploy: Deploy | undefined;
       
       try {
-          // Try standard parsing first
+          // Handle different response types from wallet
+          let deployData: any;
+          
           if (typeof signedJson === 'string') {
-              const parsed = JSON.parse(signedJson);
-              const deployData = parsed.deploy || parsed;
-              signedDeploy = Deploy.fromJSON(deployData);
+              // Try to parse as JSON string
+              try {
+                  deployData = JSON.parse(signedJson);
+              } catch (e) {
+                  // If it's not valid JSON, it might be a double-encoded string
+                  try {
+                      deployData = JSON.parse(JSON.parse(signedJson));
+                  } catch (e2) {
+                      throw new Error("Failed to parse wallet response as JSON");
+                  }
+              }
           } else {
-              signedDeploy = Deploy.fromJSON(signedJson);
+              // Wallet returned an object directly
+              deployData = signedJson;
           }
+          
+          // Extract deploy data (might be nested)
+          const actualDeploy = deployData.deploy || deployData;
+          
+          // Try standard parsing first
+          signedDeploy = Deploy.fromJSON(actualDeploy);
       } catch (parseError) {
                   console.warn("Deploy.fromJSON failed, attempting manual signature extraction. Error:", parseError);
                   
@@ -168,48 +185,125 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
   ]);
 }
 
+/**
+ * Submit deploy via direct HTTP POST (bypasses SDK timeout issues)
+ */
+async function submitDeployDirectHTTP(endpoint: string, deployJson: any): Promise<string> {
+  const controller = new AbortController();
+  // Shorter timeout for faster failure (10s for HTTPS, 5s for HTTP)
+  const timeout = endpoint.startsWith('https') ? 10000 : 5000;
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: 1,
+        jsonrpc: '2.0',
+        method: 'account_put_deploy',
+        params: {
+          deploy: deployJson
+        }
+      }),
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.error) {
+      throw new Error(`RPC Error: ${result.error.message || JSON.stringify(result.error)}`);
+    }
+    
+    const deployHash = result.result?.deploy_hash || deployJson.hash;
+    if (!deployHash) {
+      throw new Error('No deploy hash returned from RPC');
+    }
+    
+    return deployHash;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      const timeout = endpoint.startsWith('https') ? 10 : 5;
+      throw new Error(`Timeout: ${endpoint} took longer than ${timeout}s`);
+    }
+    throw error;
+  }
+}
+
 export async function sendDeploy(deploy: Deploy): Promise<string> {
+  // Convert deploy to JSON for direct HTTP submission
+  const deployJson = Deploy.toJSON(deploy);
+  
+  // Filter and prioritize endpoints - use proxy first (bypasses CORS)
   const endpoints = [
+    '/casper-rpc', // Try proxy first (bypasses CORS)
     DEFAULT_NETWORK.nodeUrl,
     ...(DEFAULT_NETWORK.fallbackUrls || [])
-  ];
+  ].filter(url => url !== '/casper-rpc' || typeof window !== 'undefined'); // Only use proxy in browser
   
   let lastError: any;
-  const TIMEOUT_PER_ENDPOINT = 5000; // 5 seconds per endpoint
-  const MAX_RETRIES = 2; // Only try 2 endpoints max
   
-  for (let i = 0; i < Math.min(endpoints.length, MAX_RETRIES); i++) {
-    const endpoint = endpoints[i];
+  // Try direct HTTP submission first (more reliable)
+  // Use shorter timeout to fail faster
+  for (const endpoint of endpoints) {
     try {
-      console.log(`🔄 Attempting to send deploy to: ${endpoint}`);
-      const httpHandler = new HttpHandler(endpoint);
-      const client = new RpcClient(httpHandler);
-      
-      // Add timeout to prevent hanging forever
-      const result = await withTimeout(
-        client.putDeploy(deploy),
-        TIMEOUT_PER_ENDPOINT,
-        `Timeout: ${endpoint} took longer than ${TIMEOUT_PER_ENDPOINT}ms`
-      );
-      
-      const deployHash = typeof result === 'string' ? result : (result as any).deploy_hash;
-      console.log(`✅ Deploy sent successfully! Hash: ${deployHash}`);
+      console.log(`🔄 Attempting direct HTTP submission to: ${endpoint}`);
+      const deployHash = await submitDeployDirectHTTP(endpoint, deployJson);
+      console.log(`✅ Deploy sent successfully via HTTP! Hash: ${deployHash}`);
       return deployHash;
-    } catch (error) {
-      console.warn(`❌ Failed to send to ${endpoint}:`, error);
+    } catch (error: any) {
+      console.warn(`❌ Direct HTTP failed for ${endpoint}:`, error.message);
       lastError = error;
       // Continue to next endpoint
     }
   }
   
+  // Fallback to SDK method
+  console.log(`⚠️ Direct HTTP failed, trying SDK method...`);
+  for (const endpoint of endpoints.slice(0, 2)) {
+    try {
+      console.log(`🔄 Attempting SDK submission to: ${endpoint}`);
+      const httpHandler = new HttpHandler(endpoint);
+      const client = new RpcClient(httpHandler);
+      
+      const result = await Promise.race([
+        client.putDeploy(deploy),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 15000)
+        )
+      ]);
+      
+      const deployHash = typeof result === 'string' ? result : (result as any).deploy_hash;
+      console.log(`✅ Deploy sent successfully via SDK! Hash: ${deployHash}`);
+      return deployHash;
+    } catch (error: any) {
+      console.warn(`❌ SDK submission failed for ${endpoint}:`, error.message);
+      lastError = error;
+    }
+  }
+  
   console.error("❌ All endpoints failed. Last error:", lastError);
   
-  // Provide helpful error message
-  const errorMsg = "Network Error: Unable to connect to Casper RPC nodes. " +
-    "Your network may be blocking port 7777. " +
-    "Please use the Casper CLI to submit the deploy manually, or try from a different network.";
+  // Save deploy for manual submission
+  const deployJsonString = JSON.stringify(deployJson, null, 2);
+  localStorage.setItem('lastSignedDeploy', deployJsonString);
+  localStorage.setItem('lastSignedDeployType', 'pending');
   
-  throw new Error(errorMsg);
+  throw new Error(
+    "Network Error: Unable to connect to Casper RPC nodes. " +
+    "Deploy has been saved to localStorage. " +
+    "Please use the 'Download Last Signed Deploy' button and submit via CLI: " +
+    "casper-client put-deploy --node-address <RPC_URL> --chain-name casper-test --deploy <file>.json"
+  );
 }
 
 export async function connectCasperWallet(): Promise<string | null> {
@@ -277,20 +371,47 @@ if (typeof window !== 'undefined') {
   console.log("  - getCachedBalance(publicKey) - Check cached balance");
 }
 
-export async function getCasperBalance(publicKeyHex: string): Promise<string> {
+export async function getCasperBalance(publicKeyHex: string, forceRefresh: boolean = false): Promise<string> {
   // Check for manually cached balance in localStorage (fallback for when RPCs are down)
   const cachedBalance = localStorage.getItem(`casper_balance_${publicKeyHex}`);
   
-  // First, try to get balance from the wallet extension directly
+  // First, try to get balance from the wallet extension directly (most reliable)
   try {
     const provider = window.CasperWalletProvider?.() || window.casperlabsHelper;
-    if (provider && provider.getActiveAccountBalance) {
-      console.log("Attempting to fetch balance from Casper Wallet extension...");
-      const balanceInMotes = await provider.getActiveAccountBalance();
+    if (provider) {
+      // Try multiple methods to get balance from wallet
+      let balanceInMotes: string | number | null = null;
+      
+      // Method 1: getActiveAccountBalance (if available)
+      if (provider.getActiveAccountBalance) {
+        console.log("Attempting to fetch balance from Casper Wallet extension (getActiveAccountBalance)...");
+        try {
+          balanceInMotes = await provider.getActiveAccountBalance();
+        } catch (e) {
+          console.warn("getActiveAccountBalance failed:", e);
+        }
+      }
+      
+      // Method 2: Try to get from wallet's internal state (if accessible)
+      if (!balanceInMotes && (window as any).casperWallet?.balance) {
+        console.log("Attempting to fetch balance from Casper Wallet extension (internal state)...");
+        balanceInMotes = (window as any).casperWallet.balance;
+      }
+      
       if (balanceInMotes) {
+        // Handle different formats (string, number, BigInt)
+        let balanceBigInt: bigint;
+        if (typeof balanceInMotes === 'string') {
+          balanceBigInt = BigInt(balanceInMotes);
+        } else if (typeof balanceInMotes === 'number') {
+          balanceBigInt = BigInt(Math.floor(balanceInMotes));
+        } else {
+          balanceBigInt = BigInt(balanceInMotes);
+        }
+        
         // Convert motes to CSPR
-        const csprBalance = (BigInt(balanceInMotes) / BigInt(1_000_000_000)).toString();
-        console.log("✅ Successfully fetched balance from wallet extension:", csprBalance);
+        const csprBalance = (balanceBigInt / BigInt(1_000_000_000)).toString();
+        console.log("✅ Successfully fetched balance from wallet extension:", csprBalance, "CSPR");
         // Cache the successful balance
         localStorage.setItem(`casper_balance_${publicKeyHex}`, csprBalance);
         return csprBalance;
@@ -300,11 +421,12 @@ export async function getCasperBalance(publicKeyHex: string): Promise<string> {
     console.warn("Wallet extension balance fetch not available, trying RPC nodes:", error);
   }
 
-  // Try RPC endpoints (will use proxy when on localhost)
+  // Try RPC endpoints (proxy first to bypass CORS, then direct)
   const endpoints = [
+    '/casper-rpc', // Try proxy first (bypasses CORS in browser)
     DEFAULT_NETWORK.nodeUrl,
     ...(DEFAULT_NETWORK.fallbackUrls || [])
-  ];
+  ].filter(url => url !== '/casper-rpc' || typeof window !== 'undefined'); // Only use proxy in browser
 
   for (let i = 0; i < endpoints.length; i++) {
     const endpoint = endpoints[i];
@@ -323,7 +445,7 @@ export async function getCasperBalance(publicKeyHex: string): Promise<string> {
       // Convert motes to CSPR (1 CSPR = 1,000,000,000 motes)
       // result.balance is CLValueUInt512, getValue() returns BigNumber
       const csprBalance = result.balance.getValue().div(1_000_000_000).toString();
-      console.log("✅ Successfully fetched Casper Balance:", csprBalance, "from", endpoint);
+      console.log("✅ Successfully fetched Casper Balance:", csprBalance, "CSPR from", endpoint);
       // Cache the successful balance
       localStorage.setItem(`casper_balance_${publicKeyHex}`, csprBalance);
       return csprBalance;
@@ -344,18 +466,32 @@ export async function getCasperBalance(publicKeyHex: string): Promise<string> {
     }
   }
   
-  // All attempts failed - use cached balance if available
+  // All attempts failed - try wallet extension one more time as last resort
+  try {
+    const provider = window.CasperWalletProvider?.() || window.casperlabsHelper;
+    if (provider) {
+      // Try to read from wallet's internal state
+      if ((window as any).casperWallet?.balance) {
+        const walletBalance = (window as any).casperWallet.balance;
+        const csprBalance = (BigInt(walletBalance) / BigInt(1_000_000_000)).toString();
+        console.log("✅ Got balance from wallet internal state:", csprBalance, "CSPR");
+        localStorage.setItem(`casper_balance_${publicKeyHex}`, csprBalance);
+        return csprBalance;
+      }
+    }
+  } catch (e) {
+    console.warn("Wallet extension fallback failed:", e);
+  }
+  
+  // Use cached balance if available
   if (cachedBalance) {
-    console.warn("⚠️ Using cached balance:", cachedBalance, "(RPC nodes unavailable)");
-    console.info("💡 Click 'View on Explorer' to verify your actual balance");
+    console.warn("⚠️ Using cached balance:", cachedBalance, "CSPR (RPC nodes unavailable)");
+    console.info("💡 Click 'Refresh Balance' or use setCasperBalance() in console");
     return cachedBalance;
   }
   
   console.error("⚠️ Returning 0 balance - all methods failed and no cached balance available");
-  console.info("💡 Possible solutions:");
-  console.info("1. Check your internet connection");
-  console.info("2. Try disconnecting and reconnecting your wallet");
-  console.info("3. Verify your account has funds on testnet: " + DEFAULT_NETWORK.scanUrl + "/account/" + publicKeyHex);
-  console.info("4. The RPC nodes may be temporarily down - click 'View on Explorer' to see your actual balance");
+  console.info("💡 Use setCasperBalance(publicKey, balance) in console to set manually");
+  console.info("💡 Or check your balance on: " + DEFAULT_NETWORK.scanUrl + "/account/" + publicKeyHex);
   return "0";
 }
