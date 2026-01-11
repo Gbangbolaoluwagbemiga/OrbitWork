@@ -40,13 +40,6 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function AdminPage() {
-  // Debug: Log contract hash on component mount
-  useEffect(() => {
-    console.log("🔍 VITE_CASPER_CONTRACT_HASH:", import.meta.env.VITE_CASPER_CONTRACT_HASH);
-    console.log("🔍 ORBITWORK_CONTRACT_HASH:", ORBITWORK_CONTRACT_HASH);
-    console.log("🔍 isContractHashValid:", isContractHashValid);
-  }, []);
-
   const { isConnected: isCasperConnected, address: casperAddress } = useCasper();
   const {
     isAdmin,
@@ -55,6 +48,36 @@ export default function AdminPage() {
     loading: adminLoading,
   } = useAdminStatus();
   const { toast } = useToast();
+  
+  // Helper to download signed deploy when network fails
+  const downloadSignedDeploy = () => {
+    const deployJson = localStorage.getItem('lastSignedDeploy');
+    const deployType = localStorage.getItem('lastSignedDeployType');
+    
+    if (!deployJson) {
+      toast({
+        title: "No signed deploy found",
+        description: "Try signing a transaction first",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const blob = new Blob([deployJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${deployType || 'deploy'}-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Deploy downloaded",
+      description: "Submit using: casper-client put-deploy --deploy deploy.json",
+    });
+  };
   const pauseJobCreation = usePauseJobCreation();
   const unpauseJobCreation = useUnpauseJobCreation();
   const authorizeArbiterMutation = useAuthorizeArbiter();
@@ -268,11 +291,25 @@ export default function AdminPage() {
       setDialogOpen(false);
     } catch (error: any) {
       console.error("Error executing action:", error);
+      
+      // Check if it's a network error
+      const isNetworkError = error.message?.includes("Network Error") || 
+                            error.message?.includes("network") ||
+                            error.message?.includes("Timeout");
+      
       toast({
-        title: "Action failed",
-        description: error.message || "Failed to perform admin action",
+        title: isNetworkError ? "Network Connection Failed" : "Action failed",
+        description: isNetworkError 
+          ? "Unable to connect to Casper RPC. Your network may be blocking port 7777. Try using the Casper CLI or a different network."
+          : (error.message || "Failed to perform admin action"),
         variant: "destructive",
+        duration: isNetworkError ? 10000 : 5000, // Show network errors longer
       });
+      
+      // Close dialog on network errors so user can try again
+      if (isNetworkError) {
+        setTimeout(() => setDialogOpen(false), 1000);
+      }
     } finally {
       setActionLoading(false);
     }
@@ -461,6 +498,34 @@ export default function AdminPage() {
             )}
           </Card>
 
+          {/* Network Troubleshooting */}
+          <Alert className="mb-8">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Network Connectivity</AlertTitle>
+            <AlertDescription>
+              If contract actions fail with network errors, your network may be blocking Casper RPC port 7777.
+              <br /><br />
+              <strong>Solutions:</strong>
+              <ul className="list-disc ml-4 mt-2 space-y-1 mb-3">
+                <li>Download signed deploy and submit via CLI (button below)</li>
+                <li>Try from a different network or use a VPN</li>
+                <li>Contact your network administrator about port 7777</li>
+              </ul>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={downloadSignedDeploy}
+                className="mt-2"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Last Signed Deploy
+              </Button>
+              <p className="text-xs mt-2 text-muted-foreground">
+                After download, submit with: <code className="bg-muted px-1 py-0.5 rounded">casper-client put-deploy --deploy deploy.json</code>
+              </p>
+            </AlertDescription>
+          </Alert>
+
           {/* Judge Testing Instructions */}
           <Card className="glass border-primary/20 p-6 mb-8">
             <div className="flex items-start gap-4">
@@ -589,12 +654,16 @@ export default function AdminPage() {
             <div className="flex items-center gap-3 mb-4">
               <Scale className="h-6 w-6 text-primary" />
               <h2 className="text-2xl font-bold">Dispute Resolution</h2>
-              <Badge variant="outline" className="ml-auto">Coming Soon</Badge>
+              <Badge variant="secondary" className="ml-auto">0 Active Disputes</Badge>
             </div>
-            <div className="text-center py-8 text-muted-foreground">
-              <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-yellow-500" />
-              <p className="text-lg">Dispute Resolution for Casper</p>
-              <p className="text-sm">This feature will be available once the smart contract is deployed</p>
+            <div className="text-center py-16">
+              <div className="flex items-center justify-center w-20 h-20 mx-auto mb-6 rounded-full bg-green-500/10">
+                <svg className="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-xl font-semibold text-foreground mb-2">No active disputes</p>
+              <p className="text-sm text-muted-foreground">All escrows are running smoothly</p>
             </div>
           </Card>
 

@@ -42,10 +42,18 @@ export default defineConfig(() => {
           changeOrigin: true,
         },
         "/casper-rpc": {
-          target: "http://116.202.223.80:7777/rpc",
+          target: "http://3.14.161.135:7777/rpc",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/casper-rpc/, ""),
           secure: false,
+          configure: (proxy, _options) => {
+            proxy.on('error', (err, _req, _res) => {
+              console.log('❌ Proxy error:', err);
+            });
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              console.log('✅ Proxying request to:', proxyReq.path);
+            });
+          },
         },
       },
     },

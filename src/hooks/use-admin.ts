@@ -22,7 +22,23 @@ export function usePauseJobCreation() {
          const deploy = pauseJobCreationDeploy(casperAddress);
          const signedDeploy = await signDeploy(deploy, casperAddress);
          if (!signedDeploy) throw new Error("Failed to sign deploy");
-         return await sendDeploy(signedDeploy);
+         
+         try {
+           return await sendDeploy(signedDeploy);
+         } catch (sendError: any) {
+           // If it's a network error, provide helpful info
+           if (sendError.message?.includes("Network Error") || sendError.message?.includes("Timeout")) {
+             const deployJson = JSON.stringify(signedDeploy.toJSON(), null, 2);
+             console.error("📋 Deploy was signed but couldn't be sent. Deploy JSON:", deployJson);
+             
+             // Store in localStorage so user can retrieve it
+             localStorage.setItem('lastSignedDeploy', deployJson);
+             localStorage.setItem('lastSignedDeployType', 'pause');
+             
+             throw new Error("Deploy signed successfully but network blocked. Check console or use: casper-client put-deploy --deploy <deploy.json>");
+           }
+           throw sendError;
+         }
       }
       
       throw new Error("Wallet not connected");
@@ -39,6 +55,7 @@ export function usePauseJobCreation() {
         title: "Error",
         description: error.message || "Failed to pause job creation",
         variant: "destructive",
+        duration: 8000,
       });
     },
   });
