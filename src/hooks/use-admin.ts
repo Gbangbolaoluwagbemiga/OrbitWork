@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { useCasper } from "@/contexts/casper-context";
 import { signDeploy, sendDeploy } from "@/lib/casper/casper-wallet";
 import { pauseJobCreationDeploy, unpauseJobCreationDeploy } from "@/lib/casper/contracts";
+import { Deploy } from "casper-js-sdk";
 
 /**
  * Hook to pause job creation
@@ -24,18 +25,22 @@ export function usePauseJobCreation() {
          if (!signedDeploy) throw new Error("Failed to sign deploy");
          
          try {
-           return await sendDeploy(signedDeploy);
+           const deployHash = await sendDeploy(signedDeploy);
+           // Only save pause state if deploy was actually submitted
+           localStorage.setItem('contractPaused', 'true');
+           return deployHash;
          } catch (sendError: any) {
-           // If it's a network error, provide helpful info
+           // If it's a network error, save deploy for manual submission
            if (sendError.message?.includes("Network Error") || sendError.message?.includes("Timeout")) {
-             const deployJson = JSON.stringify(signedDeploy.toJSON(), null, 2);
-             console.error("📋 Deploy was signed but couldn't be sent. Deploy JSON:", deployJson);
+             const deployJsonObj = Deploy.toJSON(signedDeploy);
+             const deployJson = JSON.stringify(deployJsonObj, null, 2);
              
              // Store in localStorage so user can retrieve it
              localStorage.setItem('lastSignedDeploy', deployJson);
              localStorage.setItem('lastSignedDeployType', 'pause');
              
-             throw new Error("Deploy signed successfully but network blocked. Check console or use: casper-client put-deploy --deploy <deploy.json>");
+             console.error("❌ Network submission failed. Deploy saved to localStorage.");
+             console.error("📋 Deploy JSON:", deployJson);
            }
            throw sendError;
          }
@@ -46,16 +51,19 @@ export function usePauseJobCreation() {
     onSuccess: (txHash) => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
       toast({
-        title: "Job creation paused",
-        description: `Transaction confirmed: ${txHash?.slice(0, 8)}...`,
+        title: "✅ Contract paused successfully!",
+        description: `Deploy hash: ${txHash?.slice(0, 16)}...${txHash?.slice(-8)}`,
+        duration: 5000,
       });
+      // Reload to refresh UI
+      setTimeout(() => window.location.reload(), 2000);
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to pause job creation",
+        title: "Submission Failed",
+        description: error.message || "Failed to pause job creation. Check console for details.",
         variant: "destructive",
-        duration: 8000,
+        duration: 10000,
       });
     },
   });
@@ -75,7 +83,24 @@ export function useUnpauseJobCreation() {
          const deploy = unpauseJobCreationDeploy(casperAddress);
          const signedDeploy = await signDeploy(deploy, casperAddress);
          if (!signedDeploy) throw new Error("Failed to sign deploy");
-         return await sendDeploy(signedDeploy);
+         
+         try {
+           const deployHash = await sendDeploy(signedDeploy);
+           // Only save unpause state if deploy was actually submitted
+           localStorage.setItem('contractPaused', 'false');
+           return deployHash;
+         } catch (sendError: any) {
+           // If it's a network error, save deploy for manual submission
+           if (sendError.message?.includes("Network Error") || sendError.message?.includes("Timeout")) {
+             const deployJsonObj = Deploy.toJSON(signedDeploy);
+             const deployJson = JSON.stringify(deployJsonObj, null, 2);
+             localStorage.setItem('lastSignedDeploy', deployJson);
+             localStorage.setItem('lastSignedDeployType', 'unpause');
+             
+             console.error("❌ Network submission failed. Deploy saved to localStorage.");
+           }
+           throw sendError;
+         }
       }
 
       throw new Error("Wallet not connected");
@@ -83,15 +108,18 @@ export function useUnpauseJobCreation() {
     onSuccess: (txHash) => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
       toast({
-        title: "Job creation unpaused",
-        description: `Transaction confirmed: ${txHash?.slice(0, 8)}...`,
+        title: "✅ Contract unpaused successfully!",
+        description: `Deploy hash: ${txHash?.slice(0, 16)}...${txHash?.slice(-8)}`,
+        duration: 5000,
       });
+      setTimeout(() => window.location.reload(), 2000);
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to unpause job creation",
+        title: "Submission Failed",
+        description: error.message || "Failed to unpause job creation. Check console for details.",
         variant: "destructive",
+        duration: 10000,
       });
     },
   });

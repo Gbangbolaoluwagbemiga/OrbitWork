@@ -35,16 +35,25 @@ export function WalletButton() {
   const handleRefreshBalance = async () => {
     if (refreshBalance) {
       toast({
-        title: "Fetching balance...",
-        description: "Please wait",
+        title: "Refreshing balance...",
+        description: "Fetching latest balance from wallet",
       });
+      const oldBalance = balance;
       await refreshBalance();
-      toast({
-        title: "Balance refresh attempted",
-        description: balance === "0" 
-          ? "⚠️ Unable to fetch balance. RPC nodes may be down. Check console for details."
-          : "✅ Balance updated successfully",
-      });
+      // Show success if balance changed or is valid
+      if (balance !== oldBalance || (balance !== "0" && balance !== oldBalance)) {
+        toast({
+          title: "✅ Balance updated",
+          description: `Current balance: ${balance} CSPR`,
+        });
+      } else {
+        toast({
+          title: "Balance refresh attempted",
+          description: balance === "0" 
+            ? "⚠️ Unable to fetch balance. Check wallet extension or try again."
+            : "Balance unchanged",
+        });
+      }
     }
   };
 
