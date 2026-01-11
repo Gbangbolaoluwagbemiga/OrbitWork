@@ -144,6 +144,35 @@ export function pauseJobCreationDeploy(
   );
 }
 
+export function initContractDeploy(
+  senderPublicKeyHex: string,
+  chainName: string = DEFAULT_NETWORK.chainName
+): Deploy {
+  const senderPublicKey = PublicKey.fromHex(senderPublicKeyHex);
+
+  const contractHash = ContractHash.fromJSON(ORBITWORK_CONTRACT_HASH.replace("hash-", ""));
+
+  // init() takes no arguments
+  const args = Args.fromMap({});
+
+  const session = new ExecutableDeployItem();
+  session.storedContractByHash = new StoredContractByHash(
+    contractHash,
+    "init",
+    args
+  );
+
+  const payment = ExecutableDeployItem.standardPayment("10000000000"); // 10 CSPR
+
+  const header = new DeployHeader(chainName, [], undefined, undefined, undefined, senderPublicKey);
+
+  return Deploy.makeDeploy(
+    header,
+    payment,
+    session
+  );
+}
+
 export function unpauseJobCreationDeploy(
   senderPublicKeyHex: string,
   chainName: string = DEFAULT_NETWORK.chainName

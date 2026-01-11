@@ -27,6 +27,7 @@ const DICT_TOKEN_WHITELIST: &str = "token_whitelist";
 
 #[no_mangle]
 pub extern "C" fn init() {
+    // Set the caller as admin (deployer should call this)
     let admin: Key = runtime::get_caller().into();
     runtime::put_key(KEY_ADMIN, admin);
     
@@ -196,7 +197,8 @@ pub extern "C" fn apply_to_job() {
 
 #[no_mangle]
 pub extern "C" fn pause_job_creation() {
-    let admin_key = runtime::get_key(KEY_ADMIN).unwrap_or_revert();
+    // Contract must be initialized first (call init() entry point)
+    let admin_key = runtime::get_key(KEY_ADMIN).unwrap_or_revert_with(OrbitWorkError::NotAuthorized);
     
     if Key::from(runtime::get_caller()) != admin_key {
         runtime::revert(OrbitWorkError::NotAuthorized);
@@ -208,7 +210,8 @@ pub extern "C" fn pause_job_creation() {
 
 #[no_mangle]
 pub extern "C" fn unpause_job_creation() {
-    let admin_key = runtime::get_key(KEY_ADMIN).unwrap_or_revert();
+    // Contract must be initialized first (call init() entry point)
+    let admin_key = runtime::get_key(KEY_ADMIN).unwrap_or_revert_with(OrbitWorkError::NotAuthorized);
     
     if Key::from(runtime::get_caller()) != admin_key {
         runtime::revert(OrbitWorkError::NotAuthorized);
@@ -297,6 +300,9 @@ pub extern "C" fn call() {
         EntryPointPayment::Caller,
     ));
 
+    // Store deployer address before creating contract (can't access after contract creation)
+    let deployer: Key = runtime::get_caller().into();
+    
     let (contract_hash, _contract_package_hash) = storage::new_contract(
         entry_points,
         None,
@@ -307,7 +313,8 @@ pub extern "C" fn call() {
 
     runtime::put_key("orbitwork_contract", contract_hash.into());
     
-    // Auto-initialize the contract with the deployer as admin
-    // This is called automatically when the contract is deployed
-    init();
+    // Store deployer address in deployer's account so init() can read it
+    // This way, init() will use the deployer as admin instead of whoever calls init()
+    let deployer_key_uref = storage::new_uref(deployer);
+    runtime::put_key("_deployer_address", deployer_key_uref.into());
 }
