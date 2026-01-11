@@ -7,7 +7,7 @@ import { getNextEscrowId, getEscrow } from "@/lib/casper/casper-contract-service
 import {
   useNotifications,
   createEscrowNotification,
-  createMilestoneNotification,
+  // createMilestoneNotification, // TODO: Re-enable when Casper milestone notifications are implemented
 } from "@/contexts/notification-context";
 import type { Escrow } from "@/lib/web3/types";
 // import { motion } from "framer-motion"; // Unused
@@ -215,7 +215,9 @@ export default function DashboardPage() {
             // Fetch milestones for this escrow
             let milestonesData: any[] = [];
             try {
-              milestonesData = await contractService.getMilestones(i);
+              // TODO: Implement Casper milestone fetching
+              // milestonesData = await getMilestones(i);
+              milestonesData = [];
             } catch (milestoneError) {
               console.error(
                 `[DashboardPage] Error fetching milestones for escrow ${i}:`,
@@ -622,20 +624,22 @@ export default function DashboardPage() {
       }
 
       setSubmittingMilestone(`${escrowId}-${milestoneIndex}`);
-      const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
+      // TODO: Implement Casper dispute milestone
+      throw new Error("Dispute milestone not yet implemented for Casper");
+      // const { ContractService } = await import("@/lib/web3/contract-service");
+      // const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       toast({
         title: "Disputing milestone...",
         description: "Please confirm the transaction in your wallet",
       });
 
-      await contractService.disputeMilestone({
+      /* await contractService.disputeMilestone({
         escrow_id: Number(escrowId),
         milestone_index: milestoneIndex,
         reason: "Disputed by client",
         disputer: casper.address || "",
-      });
+      }); */
 
       toast({
         title: "Milestone Disputed",
@@ -673,11 +677,12 @@ export default function DashboardPage() {
 
   const startWork = async (escrowId: string) => {
     try {
-      const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
-      if (!contract) return;
-
-      setSubmittingMilestone(escrowId);
-      await contract.send("start_work", escrowId);
+      // TODO: Implement Casper start_work
+      throw new Error("Start work not yet implemented for Casper");
+      // const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
+      // if (!contract) return;
+      // setSubmittingMilestone(escrowId);
+      // await contract.send("start_work", escrowId);
       toast({
         title: "Work Started",
         description: "You have started work on this escrow",
@@ -717,15 +722,17 @@ export default function DashboardPage() {
   const openDispute = async (escrowId: string) => {
     try {
       setSubmittingMilestone(escrowId);
-      const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
+      // TODO: Implement Casper dispute milestone
+      throw new Error("Dispute milestone not yet implemented for Casper");
+      // const { ContractService } = await import("@/lib/web3/contract-service");
+      // const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
-      await contractService.disputeMilestone({
+      /* await contractService.disputeMilestone({
         escrow_id: Number(escrowId),
         milestone_index: 0,
         reason: "General dispute",
         disputer: casper.address || "",
-      });
+      }); */
 
       toast({
         title: "Dispute Opened",
@@ -778,41 +785,33 @@ export default function DashboardPage() {
       }
 
       setSubmittingMilestone(`${escrowId}-${milestoneIndex}`);
-      const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
-      if (!contract) return;
-
+      // TODO: Implement Casper start_work
+      // const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
+      throw new Error("Start work not yet implemented for Casper");
+      /* if (!contract) return;
       toast({
         title: "Approving milestone...",
         description: "Please confirm the transaction in your wallet",
       });
-
       await contract.send(
         "approve_milestone",
         "no-value",
         escrowId,
         milestoneIndex
       );
-
-      // Transaction is already confirmed via waitForConfirmation in web3-context
-      // For Casper, we don't need to poll for receipts like Ethereum
-      // The transaction hash is returned after confirmation
       toast({
         title: "Milestone Approved!",
         description: "Payment has been sent to the freelancer",
       });
-
-      // Get freelancer address from escrow data
-      const freelancerAddress = escrow.beneficiary;
-
-      // Add cross-wallet notification for milestone approval
+      const freelancerAddress = escrow?.beneficiary;
       addCrossWalletNotification(
         createMilestoneNotification("approved", escrowId, milestoneIndex, {
           clientName:
-            casper.address.slice(0, 6) + "..." + casper.address.slice(-4),
-          projectTitle: escrow.projectDescription || `Project #${escrowId}`,
+            casper.address?.slice(0, 6) + "..." + casper.address?.slice(-4),
+          projectTitle: escrow?.projectDescription || `Project #${escrowId}`,
         }),
-        casper.address || undefined, // Client address
-        freelancerAddress // Freelancer address
+        casper.address || undefined,
+        freelancerAddress
       );
 
       // Wait a moment for blockchain state to update
@@ -861,7 +860,7 @@ export default function DashboardPage() {
   const rejectMilestone = async (
     escrowId: string,
     milestoneIndex: number,
-    reason: string
+    _reason: string
   ) => {
     try {
       // SECURITY: Double-check that user is the depositor
@@ -879,20 +878,22 @@ export default function DashboardPage() {
       }
 
       setSubmittingMilestone(`${escrowId}-${milestoneIndex}`);
-      const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
+      // TODO: Implement Casper dispute milestone
+      throw new Error("Dispute milestone not yet implemented for Casper");
+      // const { ContractService } = await import("@/lib/web3/contract-service");
+      // const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
 
       toast({
         title: "Rejecting milestone...",
         description: "Please confirm the transaction in your wallet",
       });
 
-      await contractService.rejectMilestone({
+      /* await contractService.rejectMilestone({
         escrow_id: Number(escrowId),
         milestone_index: milestoneIndex,
         reason: reason,
         depositor: casper.address || "",
-      });
+      }); */
 
       toast({
         title: "Milestone Rejected",
@@ -900,7 +901,7 @@ export default function DashboardPage() {
       });
 
       // Wait a moment for blockchain state to update
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Refresh the escrow data without reloading the page
       // Use manual refresh flag to prevent showing loading screen
@@ -950,7 +951,7 @@ export default function DashboardPage() {
   }
 
   if (loading) {
-    return <DashboardLoading isConnected={wallet.isConnected} />;
+    return <DashboardLoading isConnected={casper.isConnected} />;
   }
 
   // const completedEscrows = escrows.filter((e) => e.status === "completed"); // Unused
@@ -980,7 +981,7 @@ export default function DashboardPage() {
       <div className="min-h-screen py-12">
         <div className="container mx-auto px-4">
           <DashboardHeader />
-          <DashboardLoading isConnected={wallet.isConnected} />
+          <DashboardLoading isConnected={casper.isConnected} />
         </div>
       </div>
     );
@@ -1126,15 +1127,12 @@ export default function DashboardPage() {
                   }
                   onApproveMilestone={approveMilestone}
                   onRejectMilestone={(
-                    escrowId: string,
-                    milestoneIndex: number
+                    _escrowId: string,
+                    _milestoneIndex: number
                   ) => {
-                    // For now, use empty reason - this should be handled by the component
-                    rejectMilestone(
-                      escrowId,
-                      milestoneIndex,
-                      "No reason provided"
-                    );
+                    // TODO: Implement rejectMilestone for Casper
+                    // await rejectMilestone(escrowId, milestoneIndex, "No reason provided");
+                    throw new Error("Reject milestone not yet implemented for Casper");
                   }}
                   onDisputeMilestone={disputeMilestone}
                   onStartWork={startWork}

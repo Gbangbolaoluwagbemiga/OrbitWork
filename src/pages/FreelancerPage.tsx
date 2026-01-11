@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useCasper } from "@/contexts/casper-context";
-import { getNextEscrowId, getEscrow } from "@/lib/casper/casper-contract-service";
+import { getMilestones } from "@/lib/casper/casper-contract-service";
+// TODO: Re-enable when needed: getNextEscrowId, getEscrow
 
 import {
   useNotifications,
@@ -210,9 +211,9 @@ export default function FreelancerPage() {
     "all" | "pending" | "active" | "completed" | "disputed"
   >("all");
   const [sortFilter, setSortFilter] = useState<"newest" | "oldest">("newest");
-  const [averageRating, setAverageRating] = useState<number>(0);
-  const [ratingCount, setRatingCount] = useState<number>(0);
-  const [badge, setBadge] = useState<
+  const [averageRating] = useState<number>(0);
+  const [ratingCount] = useState<number>(0);
+  const [badge] = useState<
     "Beginner" | "Intermediate" | "Advanced" | "Expert"
   >("Beginner");
   const [escrowRatings, setEscrowRatings] = useState<
@@ -301,7 +302,7 @@ export default function FreelancerPage() {
           const isBeneficiary =
             escrowData.freelancer &&
             escrowData.freelancer.toLowerCase().trim() ===
-              wallet.address.toLowerCase().trim();
+              casper.address.toLowerCase().trim();
 
           console.log(
             `[FreelancerPage] Escrow ${i} freelancer: ${escrowData.freelancer}, isBeneficiary: ${isBeneficiary}`
@@ -321,7 +322,8 @@ export default function FreelancerPage() {
               (deadlineLedger - createdAtLedger) * SECONDS_PER_LEDGER;
 
             // Fetch milestones for this escrow
-            const milestonesData = await contractService.getMilestones(i);
+            // TODO: Implement Casper milestone fetching
+            const milestonesData: any[] = await getMilestones(i);
             const allMilestones = milestonesData.map(
               (m: any, index: number) => {
                 // Convert milestone status to number first (might be string enum or number)
@@ -490,16 +492,14 @@ export default function FreelancerPage() {
       setEscrows(freelancerEscrows);
 
       // Fetch badge and rating for the freelancer
-      if (wallet.address) {
+      if (casper.address) {
         try {
-          const badgeData = await contractService.getBadge(wallet.address);
-          setBadge(badgeData);
-
-          const ratingData = await contractService.getAverageRating(
-            wallet.address
-          );
-          setAverageRating(ratingData.average);
-          setRatingCount(ratingData.count);
+          // TODO: Implement Casper badge and rating fetching
+          // const badgeData = await getBadge(casper.address);
+          // setBadge(badgeData);
+          // const ratingData = await getAverageRating(casper.address);
+          // setAverageRating(ratingData.average);
+          // setRatingCount(ratingData.count);
         } catch (error) {
           console.error("[FreelancerPage] Error fetching badge/rating:", error);
         }
@@ -510,15 +510,14 @@ export default function FreelancerPage() {
       for (const escrow of freelancerEscrows) {
         if (escrow.status === "completed") {
           try {
-            const rating = await contractService.getRating(
-              Number.parseInt(escrow.id, 10)
-            );
-            if (rating) {
-              ratings[escrow.id] = {
-                rating: rating.rating,
-                review: rating.review,
-              };
-            }
+            // TODO: Implement Casper rating fetching
+            // const rating = await getRating(Number.parseInt(escrow.id, 10));
+            // if (rating) {
+            //   ratings[escrow.id] = {
+            //     rating: rating.rating,
+            //     review: rating.review,
+            //   };
+            // }
           } catch (error) {
             console.error(
               `[FreelancerPage] Error fetching rating for escrow ${escrow.id}:`,
@@ -556,13 +555,13 @@ export default function FreelancerPage() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [wallet.address, wallet.isConnected, toast]);
+  }, [casper.address, casper.isConnected, toast]);
 
   useEffect(() => {
-    if (wallet.isConnected) {
+    if (casper.isConnected) {
       fetchFreelancerEscrows();
     }
-  }, [wallet.isConnected]);
+  }, [casper.isConnected]);
 
   // Listen for escrow update events from milestone approvals
   useEffect(() => {
@@ -617,7 +616,7 @@ export default function FreelancerPage() {
 
   const startWork = async (escrowId: string) => {
     try {
-      if (!wallet.address) {
+      if (!casper.address) {
         toast({
           title: "Error",
           description:
@@ -632,12 +631,11 @@ export default function FreelancerPage() {
         description: "Submitting transaction to start work on this escrow",
       });
 
-      // Use ContractService instead of contract.send - it handles the correct format
-      const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
-
       // TODO: Implement startWork for Casper
       throw new Error("startWork not yet implemented for Casper");
+      /* // Use ContractService instead of contract.send - it handles the correct format
+      const { ContractService } = await import("@/lib/web3/contract-service");
+      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW); */
 
       toast({
         title: "Work started!",
@@ -658,7 +656,7 @@ export default function FreelancerPage() {
             casper.address!.slice(0, 6) + "..." + casper.address!.slice(-4),
         }),
         clientAddress, // Client address
-        wallet.address || undefined // Freelancer address
+        casper.address || undefined // Freelancer address
       );
 
       // Wait a moment for blockchain state to update
@@ -836,14 +834,13 @@ export default function FreelancerPage() {
     }
 
     // Additional check: Get the current milestone status from contract
-    try {
+    // TODO: Implement Casper get_milestones
+    // Commented out until Casper implementation is ready
+    /* try {
       const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
       const milestones = await contract.call("get_milestones", escrowId);
-
       if (milestones && milestones.length > milestoneIndex) {
         const milestone = milestones[milestoneIndex];
-
-        // Check if milestone has been submitted (status 1) or approved (status 2)
         if (milestone && milestone[2] && Number(milestone[2]) > 0) {
           toast({
             title: "Milestone already processed",
@@ -855,7 +852,7 @@ export default function FreelancerPage() {
           return;
         }
       }
-    } catch (error) {}
+    } catch (error) {} */
 
     // Validate milestone description from input field
     if (!description?.trim()) {
@@ -868,7 +865,7 @@ export default function FreelancerPage() {
     }
 
     try {
-      if (!wallet.address) {
+      if (!casper.address) {
         toast({
           title: "Error",
           description:
@@ -885,57 +882,42 @@ export default function FreelancerPage() {
         description: "Submitting transaction to submit your milestone",
       });
 
-      // Use ContractService instead of contract.send - it handles the correct format
+      // TODO: Implement Casper submitMilestone
+      throw new Error("Submit milestone not yet implemented for Casper");
+      /* // Use ContractService instead of contract.send - it handles the correct format
       const { ContractService } = await import("@/lib/web3/contract-service");
       const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
-
       await contractService.submitMilestone({
         escrow_id: Number(escrowId),
         milestone_index: milestoneIndex,
         description: description,
-        beneficiary: wallet.address,
+        beneficiary: casper.address || "",
       });
-
-      // Transaction is already confirmed via waitForConfirmation in web3-context
-      // For Casper, we don't need to poll for receipts like Ethereum
-      // The transaction hash is returned after confirmation
       toast({
         title: "Milestone submitted!",
         description: "Your milestone has been submitted for review",
       });
-
-      // Get client address from escrow data
       const escrow = escrows.find((e) => e.id === escrowId);
       const clientAddress = escrow?.payer;
-
-      // Add cross-wallet notification for milestone submission
       addCrossWalletNotification(
         createMilestoneNotification("submitted", escrowId, milestoneIndex, {
           freelancerName:
             casper.address!.slice(0, 6) + "..." + casper.address!.slice(-4),
           projectTitle: escrow?.projectTitle || `Project #${escrowId}`,
         }),
-        clientAddress, // Client address
-        wallet.address || undefined // Freelancer address
+        clientAddress,
+        casper.address || undefined
       );
-
-      // Mark this milestone as submitted to prevent double submission
       const milestoneKey = `${escrowId}-${milestoneIndex}`;
       setSubmittedMilestones((prev) => new Set([...prev, milestoneKey]));
-
-      // Clear form
       setMilestoneDescriptions((prev) => {
         const updated = { ...prev };
         delete updated[milestoneKey];
         return updated;
       });
       setSelectedEscrowId(null);
-
-      // Refresh escrows
       await fetchFreelancerEscrows();
-
-      // Dispatch event to notify other components
-      window.dispatchEvent(new CustomEvent("milestoneSubmitted"));
+      window.dispatchEvent(new CustomEvent("milestoneSubmitted")); */
     } catch (error) {
       toast({
         title: "Failed to submit milestone",
@@ -991,7 +973,7 @@ export default function FreelancerPage() {
             casper.address!.slice(0, 6) + "..." + casper.address!.slice(-4),
           projectTitle: escrow?.projectTitle || `Project #${escrowId}`,
         }),
-        clientAddress ? [clientAddress] : undefined // Notify the client
+        clientAddress ? [clientAddress].filter((x): x is string => !!x) : undefined // Notify the client
       );
 
       // Clear form and close dialog
