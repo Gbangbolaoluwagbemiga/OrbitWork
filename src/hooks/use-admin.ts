@@ -6,8 +6,56 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { useCasper } from "@/contexts/casper-context";
 import { signDeploy, sendDeploy, checkDeployStatus } from "@/lib/casper/casper-wallet";
-import { pauseJobCreationDeploy, unpauseJobCreationDeploy } from "@/lib/casper/contracts";
+import { pauseJobCreationDeploy, unpauseJobCreationDeploy, initContractDeploy } from "@/lib/casper/contracts";
 import { Deploy } from "casper-js-sdk";
+
+/**
+ * Hook to initialize the contract (must be called by deployer after deployment)
+ */
+export function useInitContract() {
+  const queryClient = useQueryClient();
+  const { isConnected: isCasperConnected, address: casperAddress } = useCasper();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (isCasperConnected && casperAddress) {
+        const deploy = initContractDeploy(casperAddress);
+        const signedDeploy = await signDeploy(deploy, casperAddress);
+        if (!signedDeploy) throw new Error("Failed to sign deploy");
+
+        const deployHash = await sendDeploy(signedDeploy);
+        
+        // Check if deploy actually succeeded on-chain (with retries)
+        const status = await checkDeployStatus(deployHash);
+        if (!status.success) {
+          throw new Error(`Deploy failed on-chain: ${status.error || 'Unknown error'}`);
+        }
+
+        return deployHash;
+      }
+
+      throw new Error("Wallet not connected");
+    },
+    onSuccess: (txHash) => {
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+      toast({
+        title: "✅ Contract initialized successfully!",
+        description: `Deploy hash: ${txHash?.slice(0, 16)}...${txHash?.slice(-8)}`,
+        duration: 5000,
+      });
+      setTimeout(() => window.location.reload(), 2000);
+    },
+    onError: (error: Error) => {
+      const isOnChainFailure = error.message?.includes("Deploy failed on-chain");
+      toast({
+        title: isOnChainFailure ? "Transaction Failed on Blockchain" : "Initialization Failed",
+        description: error.message || "Failed to initialize contract. Check console for details.",
+        variant: "destructive",
+        duration: 10000,
+      });
+    },
+  });
+}
 
 /**
  * Hook to pause job creation

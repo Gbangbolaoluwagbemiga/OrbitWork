@@ -15,6 +15,7 @@ import { CONTRACTS } from "@/lib/web3/config";
 import {
   usePauseJobCreation,
   useUnpauseJobCreation,
+  useInitContract,
   useAuthorizeArbiter,
 } from "@/hooks/use-admin";
 import { useCasper } from "@/contexts/casper-context";
@@ -32,6 +33,7 @@ import {
   AlertTriangle,
   User,
   Scale,
+  CheckCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +82,7 @@ export default function AdminPage() {
   };
   const pauseJobCreation = usePauseJobCreation();
   const unpauseJobCreation = useUnpauseJobCreation();
+  const initContract = useInitContract();
   const authorizeArbiterMutation = useAuthorizeArbiter();
   const [isPaused, setIsPaused] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -644,6 +647,41 @@ export default function AdminPage() {
               )}
             </div>
           </Card>
+
+          {/* Initialize Contract - Available to all users */}
+          {isContractHashValid && (
+            <Card className="glass border-primary/20 p-6 mb-8">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
+                  <CheckCircle className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold mb-2">Initialize Contract</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                    Initialize the contract to set your wallet as admin. This must be done once after deployment from the deployer wallet.
+                  </p>
+                  <Button
+                    onClick={() => initContract.mutate()}
+                    className="w-full gap-2"
+                    disabled={initContract.isPending}
+                    variant="default"
+                  >
+                    {initContract.isPending ? (
+                      <>
+                        <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
+                        Initializing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4" />
+                        Initialize Contract
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Dispute Resolution - Available to both owners and arbiters */}
           {/* TODO: Implement Casper-specific dispute resolution */}
