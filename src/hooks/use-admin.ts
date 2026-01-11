@@ -5,7 +5,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { useCasper } from "@/contexts/casper-context";
-import { signDeploy, sendDeploy } from "@/lib/casper/casper-wallet";
+import { signDeploy, sendDeploy, checkDeployStatus } from "@/lib/casper/casper-wallet";
 import { pauseJobCreationDeploy, unpauseJobCreationDeploy } from "@/lib/casper/contracts";
 import { Deploy } from "casper-js-sdk";
 
@@ -26,7 +26,14 @@ export function usePauseJobCreation() {
          
          try {
            const deployHash = await sendDeploy(signedDeploy);
-           // Only save pause state if deploy was actually submitted
+           
+           // Check if deploy actually succeeded on-chain (with retries)
+           const status = await checkDeployStatus(deployHash);
+           if (!status.success) {
+             throw new Error(`Deploy failed on-chain: ${status.error || 'Unknown error'}`);
+           }
+           
+           // Only save pause state if deploy actually succeeded
            localStorage.setItem('contractPaused', 'true');
            return deployHash;
          } catch (sendError: any) {
@@ -59,8 +66,9 @@ export function usePauseJobCreation() {
       setTimeout(() => window.location.reload(), 2000);
     },
     onError: (error: Error) => {
+      const isOnChainFailure = error.message?.includes("Deploy failed on-chain");
       toast({
-        title: "Submission Failed",
+        title: isOnChainFailure ? "Transaction Failed on Blockchain" : "Submission Failed",
         description: error.message || "Failed to pause job creation. Check console for details.",
         variant: "destructive",
         duration: 10000,
@@ -86,7 +94,14 @@ export function useUnpauseJobCreation() {
          
          try {
            const deployHash = await sendDeploy(signedDeploy);
-           // Only save unpause state if deploy was actually submitted
+           
+           // Check if deploy actually succeeded on-chain (with retries)
+           const status = await checkDeployStatus(deployHash);
+           if (!status.success) {
+             throw new Error(`Deploy failed on-chain: ${status.error || 'Unknown error'}`);
+           }
+           
+           // Only save unpause state if deploy actually succeeded
            localStorage.setItem('contractPaused', 'false');
            return deployHash;
          } catch (sendError: any) {
@@ -115,8 +130,9 @@ export function useUnpauseJobCreation() {
       setTimeout(() => window.location.reload(), 2000);
     },
     onError: (error: Error) => {
+      const isOnChainFailure = error.message?.includes("Deploy failed on-chain");
       toast({
-        title: "Submission Failed",
+        title: isOnChainFailure ? "Transaction Failed on Blockchain" : "Submission Failed",
         description: error.message || "Failed to unpause job creation. Check console for details.",
         variant: "destructive",
         duration: 10000,

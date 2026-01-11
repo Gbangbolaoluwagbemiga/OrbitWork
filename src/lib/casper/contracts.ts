@@ -133,7 +133,7 @@ export function pauseJobCreationDeploy(
     args
   );
 
-  const payment = ExecutableDeployItem.standardPayment("1000000000"); // 1 CSPR
+  const payment = ExecutableDeployItem.standardPayment("10000000000"); // 10 CSPR (increased for testnet minimum)
 
   const header = new DeployHeader(chainName, [], undefined, undefined, undefined, senderPublicKey);
 
@@ -161,7 +161,7 @@ export function unpauseJobCreationDeploy(
     args
   );
 
-  const payment = ExecutableDeployItem.standardPayment("1000000000"); // 1 CSPR
+  const payment = ExecutableDeployItem.standardPayment("10000000000"); // 10 CSPR (increased for testnet minimum)
 
   const header = new DeployHeader(chainName, [], undefined, undefined, undefined, senderPublicKey);
 
