@@ -157,16 +157,19 @@ export default function AdminPage() {
   const checkPausedStatus = useCallback(async () => {
     setLoading(true);
     try {
-      // Check localStorage for demo state (when network blocks submission)
+      // Check localStorage for pause state
+      // This is updated by the pause/unpause hooks on successful operations
       const storedPauseState = localStorage.getItem('contractPaused');
+      console.log('🔍 Checking pause status from localStorage:', storedPauseState);
+      
       if (storedPauseState === 'true') {
         setIsPaused(true);
-        setLoading(false);
-        return;
+        console.log('✅ Contract is paused');
+      } else {
+        // Default to false if not set or set to 'false'
+        setIsPaused(false);
+        console.log('✅ Contract is active (not paused)');
       }
-      
-      // For Casper, we assume false for now as we don't have a read method implemented yet
-      setIsPaused(false);
     } catch (error) {
       console.error("Error checking pause status:", error);
       setIsPaused(false);
@@ -252,6 +255,9 @@ export default function AdminPage() {
           // Use the new hook to pause
           const pauseTxHash = await pauseJobCreation.mutateAsync();
           console.log("Pause transaction hash:", pauseTxHash);
+          // Immediately update UI state and localStorage (hook already updates localStorage, but ensure UI updates)
+          localStorage.setItem('contractPaused', 'true');
+          setIsPaused(true);
           // State will be updated after reload (mutation already has setTimeout)
           break;
 
@@ -264,6 +270,9 @@ export default function AdminPage() {
           // Use the new hook to unpause
           const unpauseTxHash = await unpauseJobCreation.mutateAsync();
           console.log("Unpause transaction hash:", unpauseTxHash);
+          // Immediately update UI state and localStorage (hook already updates localStorage, but ensure UI updates)
+          localStorage.setItem('contractPaused', 'false');
+          setIsPaused(false);
           // State will be updated after reload (mutation already has setTimeout)
           break;
 

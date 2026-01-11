@@ -4,6 +4,7 @@ import {
   StoredContractByHash,
   Args,
   CLValue,
+  CLType,
   PublicKey,
   DeployHeader,
   ContractHash
@@ -27,6 +28,7 @@ export interface CreateEscrowParams {
   totalAmount: string; // In CSPR
   duration: number; // Seconds
   milestones: { description: string; amount: string }[];
+  token?: string; // Optional token contract hash (if not provided, uses native CSPR)
   beneficiary?: string;
 }
 
@@ -49,6 +51,18 @@ export function createEscrowDeploy(
 
   const contractHash = ContractHash.fromJSON(ORBITWORK_CONTRACT_HASH.replace("hash-", ""));
 
+  // Handle optional token parameter (Option<Key>) - contract requires this even if None
+  let tokenValue: CLValue;
+  if (params.token && params.token.trim() !== "") {
+    // Token is provided, create Option with Some value
+    const tokenKey = CLValue.newCLKey(PublicKey.fromHex(params.token.trim()));
+    tokenValue = CLValue.newCLOption(CLType.Key, tokenKey);
+  } else {
+    // No token provided, use None (Option::None)
+    // For None, pass null as the value
+    tokenValue = CLValue.newCLOption(CLType.Key, null as any);
+  }
+
   const args = Args.fromMap({
     "project_title": CLValue.newCLString(params.projectTitle),
     "project_description": CLValue.newCLString(params.projectDescription),
@@ -56,6 +70,7 @@ export function createEscrowDeploy(
     "duration": CLValue.newCLUint64(params.duration),
     "milestone_amounts": CLValue.newCLList(milestoneAmounts.length > 0 ? milestoneAmounts[0].type : CLValue.newCLUInt256(0).type, milestoneAmounts),
     "milestone_descriptions": CLValue.newCLList(milestoneDescriptions.length > 0 ? milestoneDescriptions[0].type : CLValue.newCLString("").type, milestoneDescriptions),
+    "token": tokenValue,
   });
 
   const session = new ExecutableDeployItem();

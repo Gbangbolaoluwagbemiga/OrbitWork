@@ -105,13 +105,15 @@ export function usePauseJobCreation() {
     },
     onSuccess: (txHash) => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
+      // Update localStorage immediately (already done in mutationFn, but ensure it's set)
+      localStorage.setItem('contractPaused', 'true');
       toast({
         title: "✅ Contract paused successfully!",
         description: `Deploy hash: ${txHash?.slice(0, 16)}...${txHash?.slice(-8)}`,
         duration: 5000,
       });
-      // Reload to refresh UI
-      setTimeout(() => window.location.reload(), 2000);
+      // Reload to refresh UI (reduced delay since status check is now faster)
+      setTimeout(() => window.location.reload(), 1000);
     },
     onError: (error: Error) => {
       const isOnChainFailure = error.message?.includes("Deploy failed on-chain");
@@ -170,12 +172,15 @@ export function useUnpauseJobCreation() {
     },
     onSuccess: (txHash) => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
+      // Update localStorage immediately (already done in mutationFn, but ensure it's set)
+      localStorage.setItem('contractPaused', 'false');
       toast({
         title: "✅ Contract unpaused successfully!",
         description: `Deploy hash: ${txHash?.slice(0, 16)}...${txHash?.slice(-8)}`,
         duration: 5000,
       });
-      setTimeout(() => window.location.reload(), 2000);
+      // Reload to refresh UI (reduced delay since status check is now faster)
+      setTimeout(() => window.location.reload(), 1000);
     },
     onError: (error: Error) => {
       const isOnChainFailure = error.message?.includes("Deploy failed on-chain");

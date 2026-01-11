@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { useWeb3 } from "@/hooks/use-web3";
 import { useCasper } from "@/contexts/casper-context";
 import { useCasperApply } from "@/hooks/use-casper-apply";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +27,6 @@ import {
 import { Label } from "@/components/ui/label";
 
 export default function JobsPage() {
-  const { wallet, getContract } = useWeb3();
   const casper = useCasper();
   const { applyToJob } = useCasperApply();
   const { toast } = useToast();
@@ -69,13 +67,13 @@ export default function JobsPage() {
   };
 
   useEffect(() => {
-    if (wallet.address) {
+    if (casper.address) {
       fetchOpenJobs();
       countOngoingProjects();
     } else {
     }
     checkContractPauseStatus();
-  }, [wallet.address]);
+  }, [casper.address]);
 
   // Removed automatic refresh to prevent constant reloading
 
@@ -102,11 +100,8 @@ export default function JobsPage() {
 
   const countOngoingProjects = async () => {
     try {
-      const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
-
-      // Get total number of escrows
-      const totalEscrows = await contract.call("next_escrow_id");
-      const escrowCount = Number(totalEscrows);
+      // Use contractService for Casper
+      const escrowCount = await contractService.getNextEscrowId();
 
       let ongoingCount = 0;
 
@@ -114,11 +109,13 @@ export default function JobsPage() {
       if (escrowCount > 1) {
         for (let i = 1; i < escrowCount; i++) {
           try {
-            const escrowSummary = await contract.call("get_escrow", i);
+            const escrow = await contractService.getEscrow(i);
+            if (!escrow) continue;
+            const escrowSummary = [escrow.creator || escrow.depositor, escrow.freelancer, null, escrow.status];
 
             const payerAddress = escrowSummary[0]; // depositor/client
             const beneficiaryAddress = escrowSummary[1]; // beneficiary/freelancer
-            const userAddress = wallet.address;
+            const userAddress = casper.address;
 
             // Check if current user is either the payer (client) or beneficiary (freelancer)
             const isPayer =
@@ -155,7 +152,7 @@ export default function JobsPage() {
   const checkApplicationStatus = async () => {
     try {
       // Check blockchain for application status for each job
-      if (!wallet.address || jobs.length === 0) return;
+      if (!casper.address || jobs.length === 0) return;
 
       const applicationStatus: Record<string, boolean> = {};
 
@@ -163,7 +160,7 @@ export default function JobsPage() {
         try {
           const hasAppliedResult = await contractService.hasUserApplied(
             Number.parseInt(job.id, 10),
-            wallet.address
+            casper.address!
           );
           applicationStatus[job.id] = hasAppliedResult;
           console.log(
@@ -194,7 +191,7 @@ export default function JobsPage() {
     try {
       await Promise.all([fetchOpenJobs(), countOngoingProjects()]);
       // Check application status after refreshing jobs
-      if (wallet.address && jobs.length > 0) {
+      if (casper.address && jobs.length > 0) {
         await checkApplicationStatus();
       }
     } finally {
@@ -205,7 +202,7 @@ export default function JobsPage() {
   // Clear application status cache when wallet changes
   useEffect(() => {
     setHasApplied({});
-  }, [wallet.address]);
+  }, [casper.address]);
 
   const fetchOpenJobs = async () => {
     setLoading(true);
@@ -277,10 +274,10 @@ export default function JobsPage() {
             if (isOpenJob) {
               // Check if current user is the job creator (should not be able to apply to own job)
               const isJobCreator =
-                wallet.address &&
+                casper.address &&
                 escrowData.creator &&
                 escrowData.creator.toLowerCase().trim() ===
-                  wallet.address.toLowerCase().trim();
+                  casper.address.toLowerCase().trim();
 
               // Check if current user has already applied to this job
               // First check local state (preserves state after applying)
@@ -288,14 +285,14 @@ export default function JobsPage() {
               let applicationCount = 0;
 
               // Only check blockchain if not already in local state
-              if (!userHasApplied && wallet.address) {
+              if (!userHasApplied && casper.address) {
                 try {
                   userHasApplied = await contractService.hasUserApplied(
                     i,
-                    wallet.address
+                    casper.address
                   );
                   console.log(
-                    `User ${wallet.address} has applied to job ${i}:`,
+                    `User ${casper.address} has applied to job ${i}:`,
                     userHasApplied
                   );
                 } catch (error) {
@@ -397,15 +394,14 @@ export default function JobsPage() {
     coverLetter: string,
     proposedTimeline: string
   ) => {
-    const isWalletConnected = wallet.isConnected;
     const isCasperConnected = casper.isConnected;
 
-    if (!job || (!isWalletConnected && !isCasperConnected)) {
-        toast({ title: "Wallet not connected", description: "Please connect your wallet.", variant: "destructive" });
+    if (!job || !isCasperConnected) {
+        toast({ title: "Wallet not connected", description: "Please connect your Casper wallet.", variant: "destructive" });
         return;
     }
 
-    const userAddress = isCasperConnected ? casper.address : wallet.address;
+    const userAddress = casper.address;
 
     // Check if user is the job creator (should not be able to apply to own job)
     if (
@@ -467,104 +463,7 @@ export default function JobsPage() {
          return;
     }
 
-    // STELLAR PATH
-    try {
-      const contract = getContract(CONTRACTS.ORBITWORK_ESCROW);
-      if (!contract) {
-          setApplying(false);
-          return;
-      }
-
-      // Check if user has already applied to this job using contractService
-      // Always check blockchain to prevent double applications
-      let userHasApplied = false;
-      if (wallet.address) {
-        try {
-          const hasAppliedResult = await contractService.hasUserApplied(
-            Number.parseInt(job.id, 10),
-            wallet.address
-          );
-          userHasApplied = hasAppliedResult;
-          console.log(
-            `[handleApply] User ${wallet.address} has applied to job ${job.id}:`,
-            hasAppliedResult
-          );
-        } catch (error) {
-          console.warn(
-            `[handleApply] Error checking if user applied to job ${job.id}:`,
-            error
-          );
-          // If check fails, use local state as fallback
-          userHasApplied = hasApplied[job.id] || false;
-        }
-      }
-
-      if (userHasApplied) {
-        toast({
-          title: "Already Applied",
-          description: "You have already applied to this job.",
-          variant: "destructive",
-        });
-        setApplying(false);
-        return;
-      }
-
-      // Call the smart contract applyToJob function
-      // The contract expects: apply_to_job(escrow_id, cover_letter, proposed_timeline, freelancer)
-      // The generated client expects an object with these fields
-      // Pass freelancer address - contract will require auth from it
-      await contract.send("apply_to_job", {
-        escrow_id: Number.parseInt(job.id, 10),
-        cover_letter: coverLetter,
-        proposed_timeline: Number.parseInt(proposedTimeline, 10),
-        freelancer: wallet.address || "",
-      });
-
-      // Update hasApplied state to prevent double application
-      setHasApplied((prev) => ({
-        ...prev,
-        [job.id]: true,
-      }));
-
-      toast({
-        title: "Application Submitted!",
-        description:
-          "The client will review your application and get back to you.",
-      });
-
-      // Add notification for job application submission - notify the CLIENT (job creator)
-      addNotification(
-        createApplicationNotification(
-          "submitted",
-          Number(job.id),
-          wallet.address!,
-          {
-            jobTitle: job.projectDescription || `Job #${job.id}`,
-            freelancerName:
-              wallet.address!.slice(0, 6) + "..." + wallet.address!.slice(-4),
-          }
-        ),
-        [job.payer] // Notify the client (job creator)
-      );
-
-      // coverLetter and proposedTimeline are handled in the dialog component
-      setSelectedJob(null);
-
-      // DON'T refresh jobs list immediately - it will reset hasApplied state
-      // The application is already recorded on blockchain, just update local state
-      // Only refresh if needed for other reasons
-
-      // Refresh the ongoing projects count
-      await countOngoingProjects();
-    } catch (error) {
-      toast({
-        title: "Application Failed",
-        description: "Could not submit your application. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setApplying(false);
-    }
+    // Note: Stellar path removed - using Casper only
   };
 
   const filteredJobs = jobs.filter((job) => {
@@ -583,8 +482,8 @@ export default function JobsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  if (!wallet.isConnected || loading) {
-    return <JobsLoading isConnected={wallet.isConnected} />;
+  if (!casper.isConnected || loading) {
+    return <JobsLoading isConnected={casper.isConnected} />;
   }
 
   return (
