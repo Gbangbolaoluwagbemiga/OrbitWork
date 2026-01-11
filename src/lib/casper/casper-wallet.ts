@@ -158,17 +158,58 @@ export async function signDeploy(deploy: Deploy, publicKeyHex: string): Promise<
   }
 }
 
+// Helper function to add timeout to promises
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+    )
+  ]);
+}
+
 export async function sendDeploy(deploy: Deploy): Promise<string> {
-  try {
-      const httpHandler = new HttpHandler(DEFAULT_NETWORK.nodeUrl);
+  const endpoints = [
+    DEFAULT_NETWORK.nodeUrl,
+    ...(DEFAULT_NETWORK.fallbackUrls || [])
+  ];
+  
+  let lastError: any;
+  const TIMEOUT_PER_ENDPOINT = 5000; // 5 seconds per endpoint
+  const MAX_RETRIES = 2; // Only try 2 endpoints max
+  
+  for (let i = 0; i < Math.min(endpoints.length, MAX_RETRIES); i++) {
+    const endpoint = endpoints[i];
+    try {
+      console.log(`🔄 Attempting to send deploy to: ${endpoint}`);
+      const httpHandler = new HttpHandler(endpoint);
       const client = new RpcClient(httpHandler);
       
-      const result = await client.putDeploy(deploy);
-      return typeof result === 'string' ? result : (result as any).deploy_hash;
-  } catch (error) {
-      console.error("Error sending deploy:", error);
-      throw error;
+      // Add timeout to prevent hanging forever
+      const result = await withTimeout(
+        client.putDeploy(deploy),
+        TIMEOUT_PER_ENDPOINT,
+        `Timeout: ${endpoint} took longer than ${TIMEOUT_PER_ENDPOINT}ms`
+      );
+      
+      const deployHash = typeof result === 'string' ? result : (result as any).deploy_hash;
+      console.log(`✅ Deploy sent successfully! Hash: ${deployHash}`);
+      return deployHash;
+    } catch (error) {
+      console.warn(`❌ Failed to send to ${endpoint}:`, error);
+      lastError = error;
+      // Continue to next endpoint
+    }
   }
+  
+  console.error("❌ All endpoints failed. Last error:", lastError);
+  
+  // Provide helpful error message
+  const errorMsg = "Network Error: Unable to connect to Casper RPC nodes. " +
+    "Your network may be blocking port 7777. " +
+    "Please use the Casper CLI to submit the deploy manually, or try from a different network.";
+  
+  throw new Error(errorMsg);
 }
 
 export async function connectCasperWallet(): Promise<string | null> {
