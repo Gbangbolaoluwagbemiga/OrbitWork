@@ -41,6 +41,12 @@ export default defineConfig(() => {
           target: "http://localhost:8000/friendbot",
           changeOrigin: true,
         },
+        "/casper-rpc": {
+          target: "http://116.202.223.80:7777/rpc",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/casper-rpc/, ""),
+          secure: false,
+        },
       },
     },
   };
