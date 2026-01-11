@@ -8,8 +8,6 @@ export interface NetworkConfig {
 
 // For now, bypass proxy and connect directly to avoid DNS/network issues
 // The Casper RPC nodes support CORS, so direct connection should work
-const isLocalhost = typeof window !== 'undefined' && 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 export const CasperNetwork: Record<'TESTNET' | 'MAINNET', NetworkConfig> = {
   TESTNET: {

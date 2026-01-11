@@ -135,7 +135,7 @@ export default function DashboardPage() {
       setLoading(true);
     }
     try {
-      if (!wallet.isConnected || !wallet.address) {
+      if (!casper.isConnected || !casper.address) {
         // Only clear escrows if we're doing an initial load, not a refresh
         if (!isManualRefresh && previousEscrowsCount === 0) {
           setEscrows([]);
@@ -188,11 +188,11 @@ export default function DashboardPage() {
           const isPayer =
             escrowData.creator &&
             escrowData.creator.toLowerCase().trim() ===
-              wallet.address.toLowerCase().trim();
+              casper.address.toLowerCase().trim();
           const isBeneficiary =
             escrowData.freelancer &&
             escrowData.freelancer.toLowerCase().trim() ===
-              wallet.address.toLowerCase().trim();
+              casper.address.toLowerCase().trim();
 
           console.log(
             `[DashboardPage] Escrow ${i} - isPayer: ${isPayer}, isBeneficiary: ${isBeneficiary}`
@@ -462,13 +462,13 @@ export default function DashboardPage() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [wallet.isConnected, wallet.address, toast]);
+  }, [casper.isConnected, casper.address, toast]);
 
   useEffect(() => {
-    if (wallet.isConnected) {
+    if (casper.isConnected) {
       fetchUserEscrows();
     }
-  }, [wallet.isConnected, fetchUserEscrows]);
+  }, [casper.isConnected, fetchUserEscrows]);
 
   // Listen for escrow update events from MilestoneActions
   useEffect(() => {
@@ -611,7 +611,7 @@ export default function DashboardPage() {
       const escrow = escrows.find((e) => e.id === escrowId);
       if (
         !escrow ||
-        escrow.payer.toLowerCase() !== wallet.address?.toLowerCase()
+        escrow.payer.toLowerCase() !== casper.address?.toLowerCase()
       ) {
         toast({
           title: "Access Denied",
@@ -694,7 +694,7 @@ export default function DashboardPage() {
             escrows.find((e) => e.id === escrowId)?.projectDescription ||
             `Project #${escrowId}`,
           freelancerName:
-            wallet.address!.slice(0, 6) + "..." + wallet.address!.slice(-4),
+            casper.address!.slice(0, 6) + "..." + casper.address!.slice(-4),
         }),
         casper.address || undefined, // Client address
         freelancerAddress // Freelancer address
@@ -767,7 +767,7 @@ export default function DashboardPage() {
       const escrow = escrows.find((e) => e.id === escrowId);
       if (
         !escrow ||
-        escrow.payer.toLowerCase() !== wallet.address?.toLowerCase()
+        escrow.payer.toLowerCase() !== casper.address?.toLowerCase()
       ) {
         toast({
           title: "Access Denied",
@@ -808,7 +808,7 @@ export default function DashboardPage() {
       addCrossWalletNotification(
         createMilestoneNotification("approved", escrowId, milestoneIndex, {
           clientName:
-            wallet.address.slice(0, 6) + "..." + wallet.address.slice(-4),
+            casper.address.slice(0, 6) + "..." + casper.address.slice(-4),
           projectTitle: escrow.projectDescription || `Project #${escrowId}`,
         }),
         casper.address || undefined, // Client address
@@ -868,7 +868,7 @@ export default function DashboardPage() {
       const escrow = escrows.find((e) => e.id === escrowId);
       if (
         !escrow ||
-        escrow.payer.toLowerCase() !== wallet.address?.toLowerCase()
+        escrow.payer.toLowerCase() !== casper.address?.toLowerCase()
       ) {
         toast({
           title: "Access Denied",
@@ -935,7 +935,7 @@ export default function DashboardPage() {
   //   setExpandedEscrow(expandedEscrow === id ? null : id);
   // };
 
-  if (!wallet.isConnected) {
+  if (!casper.isConnected) {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-mesh">
         <Card className="glass border-primary/20 p-12 text-center max-w-md">
@@ -958,7 +958,7 @@ export default function DashboardPage() {
   //   .reduce((sum, e) => sum + Number.parseFloat(e.totalAmount) / 1e7, 0)
   //   .toFixed(2); // Unused
 
-  if (!wallet.isConnected) {
+  if (!casper.isConnected) {
     return (
       <div className="min-h-screen py-12">
         <div className="container mx-auto px-4">

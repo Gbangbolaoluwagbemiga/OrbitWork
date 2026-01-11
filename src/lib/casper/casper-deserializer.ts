@@ -55,9 +55,16 @@ function readString(bytes: Uint8Array, offset: number): { value: string; offset:
  * Read U256 (32 bytes, little-endian)
  */
 function readU256(bytes: Uint8Array, offset: number): { value: bigint; offset: number } {
+  if (offset + 32 > bytes.length) {
+    throw new Error(`Cannot read U256: insufficient bytes at offset ${offset}. Need 32 bytes, have ${bytes.length - offset}`);
+  }
   let value = BigInt(0);
   for (let i = 0; i < 32; i++) {
-    value |= BigInt(bytes[offset + i]) << BigInt(i * 8);
+    const byte = bytes[offset + i];
+    if (byte === undefined) {
+      throw new Error(`Cannot read U256: undefined byte at offset ${offset + i}`);
+    }
+    value |= BigInt(byte) << BigInt(i * 8);
   }
   return { value, offset: offset + 32 };
 }
@@ -119,10 +126,11 @@ function readOptionKey(bytes: Uint8Array, offset: number): { value: string | nul
       return { value: null, offset: offset + 32 };
     }
   } else {
-    // Invalid tag - might be misaligned
-    console.warn(`[casper-deserializer] Unexpected Option<Key> tag: ${tag} (0x${tag.toString(16)}) at offset ${offset - 1}, treating as None`);
-    // Return None and skip 33 bytes (Key size) to try to recover
-    return { value: null, offset: offset + 32 }; // +32 because we already incremented offset
+    // Invalid tag - might be misaligned, try to skip forward and return None
+    console.warn(`[casper-deserializer] Unexpected Option<Key> tag: ${tag} (0x${tag.toString(16)}) at offset ${offset - 1}, treating as None and skipping`);
+    // Don't increment offset further - we're already past the tag byte
+    // Return current offset (already incremented past tag)
+    return { value: null, offset };
   }
 }
 
@@ -262,12 +270,38 @@ export function deserializeEscrow(hexBytes: string): any {
   offset = tokenOffset;
   
   // total_amount: U256
-  const { value: total_amount, offset: totalAmountOffset } = readU256(bytes, offset);
-  offset = totalAmountOffset;
+  let total_amount = BigInt(0);
+  try {
+    const result = readU256(bytes, offset);
+    total_amount = result.value;
+    offset = result.offset;
+  } catch (e) {
+    console.error(`[casper-deserializer] Failed to read total_amount at offset ${offset}:`, e);
+    // If we can't read total_amount, we're severely misaligned - try to skip 32 bytes
+    if (offset + 32 <= bytes.length) {
+      offset += 32;
+    } else {
+      // Can't skip, just use 0
+      console.warn(`[casper-deserializer] Cannot skip total_amount, using 0`);
+    }
+  }
   
   // platform_fee: U256
-  const { value: platform_fee, offset: platformFeeOffset } = readU256(bytes, offset);
-  offset = platformFeeOffset;
+  let platform_fee = BigInt(0);
+  try {
+    const result = readU256(bytes, offset);
+    platform_fee = result.value;
+    offset = result.offset;
+  } catch (e) {
+    console.error(`[casper-deserializer] Failed to read platform_fee at offset ${offset}:`, e);
+    // If we can't read platform_fee, we're severely misaligned - try to skip 32 bytes
+    if (offset + 32 <= bytes.length) {
+      offset += 32;
+    } else {
+      // Can't skip, just use 0
+      console.warn(`[casper-deserializer] Cannot skip platform_fee, using 0`);
+    }
+  }
   
   // status: EscrowStatus (u8)
   const status = bytes[offset];
@@ -313,8 +347,8 @@ export function deserializeEscrow(hexBytes: string): any {
     required_confirmations,
     milestones,
     token,
-    total_amount: total_amount.toString(),
-    platform_fee: platform_fee.toString(),
+    total_amount: total_amount ? total_amount.toString() : "0",
+    platform_fee: platform_fee ? platform_fee.toString() : "0",
     status,
     created_at: Number(created_at),
     deadline: Number(deadline),

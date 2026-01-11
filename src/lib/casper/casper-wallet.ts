@@ -250,15 +250,15 @@ export async function signDeploy(deploy: Deploy, publicKeyHex: string): Promise<
   }
 }
 
-// Helper function to add timeout to promises
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => 
-      setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
-    )
-  ]);
-}
+// Helper function to add timeout to promises (currently unused but kept for future use)
+// function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+//   return Promise.race([
+//     promise,
+//     new Promise<T>((_, reject) => 
+//       setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+//     )
+//   ]);
+// }
 
 /**
  * Submit deploy via direct HTTP POST (bypasses SDK timeout issues)
@@ -621,7 +621,7 @@ if (typeof window !== 'undefined') {
   console.log("  - getCachedBalance(publicKey) - Check cached balance");
 }
 
-export async function getCasperBalance(publicKeyHex: string, forceRefresh: boolean = false): Promise<string> {
+export async function getCasperBalance(publicKeyHex: string, _forceRefresh: boolean = false): Promise<string> {
   // Check for manually cached balance in localStorage (fallback for when RPCs are down)
   const cachedBalance = localStorage.getItem(`casper_balance_${publicKeyHex}`);
   
