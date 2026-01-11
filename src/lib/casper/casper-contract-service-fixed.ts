@@ -46,127 +46,57 @@ async function getRpcClient(): Promise<RpcClient> {
 }
 
 async function getStateRootHashString(client: RpcClient): Promise<string> {
-  try {
-    // Use chain_get_state_root_hash RPC method directly for reliability
-    const response = await fetch("/casper-rpc", {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'chain_get_state_root_hash'
-      })
-    });
-    const data = await response.json();
-    if (data.error) {
-      throw new Error(`Failed to get state root hash: ${data.error.message}`);
-    }
-    const stateRootHash = data.result?.state_root_hash || data.result;
-    if (typeof stateRootHash === 'string') {
-      return stateRootHash;
-    }
-    // Fallback to block header if RPC fails
-    const latestBlock = await client.getLatestBlock();
-    const blockHash = (latestBlock.block as any)?.header?.state_root_hash;
-    if (typeof blockHash === 'string') return blockHash;
-    return String(blockHash || "");
-  } catch (error) {
-    console.warn("[casper-contract-service] Failed to get state root hash via RPC, using block header:", error);
-    const latestBlock = await client.getLatestBlock();
-    const stateRootHashValue = (latestBlock.block as any)?.header?.state_root_hash;
-    if (typeof stateRootHashValue === 'string') {
-      return stateRootHashValue;
-    }
-    // Try to extract from nested structure
-    const hashStr = (stateRootHashValue as any)?.value?.() || 
-                    (stateRootHashValue as any)?.hex || 
-                    (stateRootHashValue as any)?.toString?.() || 
-                    String(stateRootHashValue || "");
-    return hashStr;
+  const latestBlock = await client.getLatestBlock();
+  const stateRootHashValue = (latestBlock.block as any)?.header?.state_root_hash;
+  // Convert to string if it's an object (Hash type)
+  if (typeof stateRootHashValue === 'string') {
+    return stateRootHashValue;
   }
+  return stateRootHashValue?.toString?.() || String(stateRootHashValue || "");
 }
 
 async function queryGlobalStateRaw(endpoint: string, stateRootHash: string, key: string, path: string[] = []): Promise<any> {
-  // Ensure stateRootHash is a string
-  const stateRootHashStr = typeof stateRootHash === 'string' ? stateRootHash : String(stateRootHash || "");
-  
-  const requestBody = {
-    jsonrpc: '2.0',
-    id: 1,
-    method: 'state_get_item',
-    params: {
-      state_root_hash: stateRootHashStr,
-      key: key,
-      path: path.length > 0 ? path : undefined
-    }
-  };
-  
-  // Remove undefined path if empty
-  if (!requestBody.params.path) {
-    delete (requestBody.params as any).path;
-  }
-  
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestBody)
-  });
-  
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-  }
-  
-  const data = await response.json();
-  if (data.error) {
-    console.error("[casper-contract-service] RPC Error:", {
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
       method: 'state_get_item',
-      params: requestBody.params,
-      error: data.error
-    });
-    throw new Error(`RPC Error: ${data.error.message || JSON.stringify(data.error)}`);
-  }
+      params: {
+        state_root_hash: stateRootHash,
+        key: key,
+        path: path
+      }
+    })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(`RPC Error: ${data.error.message || JSON.stringify(data.error)}`);
   return data.result;
 }
 
 async function queryDictionaryRaw(endpoint: string, stateRootHash: string, contractHash: string, dictionaryName: string, dictionaryItemKey: string): Promise<any> {
-  // Ensure stateRootHash is a string
-  const stateRootHashStr = typeof stateRootHash === 'string' ? stateRootHash : String(stateRootHash || "");
-  
-  const requestBody = {
-    jsonrpc: '2.0',
-    id: 1,
-    method: 'state_get_dictionary_item',
-    params: {
-      state_root_hash: stateRootHashStr,
-      dictionary_identifier: {
-        ContractNamedKey: {
-          key: contractHash.startsWith('hash-') ? contractHash : `hash-${contractHash}`,
-          dictionary_name: dictionaryName,
-          dictionary_item_key: dictionaryItemKey
-        }
-      }
-    }
-  };
-  
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestBody)
-  });
-  
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-  }
-  
-  const data = await response.json();
-  if (data.error) {
-    console.error("[casper-contract-service] RPC Error:", {
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
       method: 'state_get_dictionary_item',
-      params: requestBody.params,
-      error: data.error
-    });
-    throw new Error(`RPC Error: ${data.error.message || JSON.stringify(data.error)}`);
-  }
+      params: {
+        state_root_hash: stateRootHash,
+        dictionary_identifier: {
+          ContractNamedKey: {
+            key: `hash-${contractHash}`,
+            dictionary_name: dictionaryName,
+            dictionary_item_key: dictionaryItemKey
+          }
+        }
+      }
+    })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(`RPC Error: ${data.error.message || JSON.stringify(data.error)}`);
   return data.result;
 }
 
@@ -200,52 +130,9 @@ export async function getEscrow(escrowId: number): Promise<CasperEscrowData | nu
     
     const result = await queryDictionaryRaw(endpoint, stateRootHash, contractHashHex, "escrows", escrowId.toString());
     
-    if (result?.stored_value) {
-      // Handle different CLValue structures
-      const clValue = result.stored_value.CLValue || result.stored_value.clValue;
-      if (!clValue) {
-        console.warn(`[casper-contract-service] No CLValue found in result for escrow ${escrowId}`);
-        return null;
-      }
-      
-      // Extract value - try parsed, then value, then bytes
-      let value = clValue.parsed || clValue.value;
-      
-      // If value is still not available, try to parse from bytes or JSON
-      if (!value && clValue.bytes) {
-        try {
-          // Convert hex bytes to string
-          const hexStr = typeof clValue.bytes === 'string' ? clValue.bytes : 
-                         Array.isArray(clValue.bytes) ? clValue.bytes.map((b: number) => b.toString(16).padStart(2, '0')).join('') :
-                         '';
-          if (hexStr) {
-            const bytes = new Uint8Array(hexStr.match(/.{1,2}/g)?.map((byte: string) => parseInt(byte, 16)) || []);
-            value = JSON.parse(new TextDecoder().decode(bytes));
-          }
-        } catch (e) {
-          console.warn(`[casper-contract-service] Failed to parse CLValue bytes for escrow ${escrowId}:`, e);
-        }
-      }
-      
-      if (!value) {
-        console.warn(`[casper-contract-service] No value extracted from CLValue for escrow ${escrowId}. CLValue structure:`, clValue);
-        return null;
-      }
-      
-      // Parse JSON if string
-      let data: any;
-      try {
-        data = typeof value === "string" ? JSON.parse(value) : value;
-      } catch (e) {
-        console.warn(`[casper-contract-service] Failed to parse value as JSON for escrow ${escrowId}, using as-is:`, value);
-        data = value;
-      }
-      
-      if (!data || typeof data !== 'object') {
-        console.warn(`[casper-contract-service] Invalid data structure for escrow ${escrowId}:`, data);
-        return null;
-      }
-      
+    if (result?.stored_value?.CLValue) {
+      const value = result.stored_value.CLValue.parsed || result.stored_value.CLValue.value;
+      const data = typeof value === "string" ? JSON.parse(value) : value;
       return {
         escrow_id: escrowId,
         creator: data.depositor || data.creator || "",
@@ -390,34 +277,16 @@ export async function isJobCreationPaused(): Promise<boolean> {
     const contractHashHex = ORBITWORK_CONTRACT_HASH.replace(/^hash-/, "");
     const endpoint = "/casper-rpc";
     
-    // Try querying for "paused" named key (contract might use different key name)
-    try {
-      const result = await queryGlobalStateRaw(endpoint, stateRootHash, `hash-${contractHashHex}`, ["paused"]);
-      const clValue = result?.stored_value?.CLValue || result?.stored_value?.clValue;
-      if (clValue) {
-        const value = clValue.parsed || clValue.value;
-        return value === true || value === 1;
-      }
-    } catch (e) {
-      // Try "is_paused" if "paused" fails
-      try {
-        const result = await queryGlobalStateRaw(endpoint, stateRootHash, `hash-${contractHashHex}`, ["is_paused"]);
-        const clValue = result?.stored_value?.CLValue || result?.stored_value?.clValue;
-        if (clValue) {
-          const value = clValue.parsed || clValue.value;
-          return value === true || value === 1;
-        }
-      } catch (e2) {
-        // Key doesn't exist - contract not initialized or different structure
-        // This is fine, just return false (not paused)
-        console.warn("[casper-contract-service] Could not find pause status key, assuming not paused");
-      }
+    const result = await queryGlobalStateRaw(endpoint, stateRootHash, `hash-${contractHashHex}`, ["is_paused"]);
+    
+    if (result?.stored_value?.CLValue) {
+      const value = result.stored_value.CLValue.parsed || result.stored_value.CLValue.value;
+      return value === true || value === 1;
     }
     
     return false;
   } catch (error) {
-    // If all queries fail, assume not paused
-    console.warn("[casper-contract-service] Error checking if job creation is paused, assuming not paused:", error);
+    console.error("[casper-contract-service] Error checking if job creation is paused:", error);
     return false;
   }
 }
