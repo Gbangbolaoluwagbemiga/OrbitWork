@@ -6,6 +6,7 @@
 
 import { RpcClient, HttpHandler } from "casper-js-sdk";
 import { ORBITWORK_CONTRACT_HASH } from "./contracts";
+import { deserializeEscrow } from "./casper-deserializer";
 
 // Export interface compatible with existing EscrowData from contract-service
 export interface CasperEscrowData {
@@ -208,41 +209,42 @@ export async function getEscrow(escrowId: number): Promise<CasperEscrowData | nu
         return null;
       }
       
-      // Extract value - try parsed, then value, then bytes
-      let value = clValue.parsed || clValue.value;
+      // Extract value - try parsed, then value, then manual deserialization from bytes
+      let data: any = clValue.parsed || clValue.value;
       
-      // If value is still not available, try to parse from bytes or JSON
-      if (!value && clValue.bytes) {
+      // If value is still not available and we have bytes, manually deserialize
+      if (!data && clValue.bytes && clValue.cl_type === 'Any') {
         try {
-          // Convert hex bytes to string
-          const hexStr = typeof clValue.bytes === 'string' ? clValue.bytes : 
-                         Array.isArray(clValue.bytes) ? clValue.bytes.map((b: number) => b.toString(16).padStart(2, '0')).join('') :
-                         '';
-          if (hexStr) {
-            const bytes = new Uint8Array(hexStr.match(/.{1,2}/g)?.map((byte: string) => parseInt(byte, 16)) || []);
-            value = JSON.parse(new TextDecoder().decode(bytes));
+          const hexBytes = typeof clValue.bytes === 'string' ? clValue.bytes : 
+                           Array.isArray(clValue.bytes) ? clValue.bytes.map((b: number) => b.toString(16).padStart(2, '0')).join('') :
+                           '';
+          if (hexBytes) {
+            data = deserializeEscrow(hexBytes);
+            console.log(`[casper-contract-service] Successfully deserialized escrow ${escrowId} from bytes`);
           }
         } catch (e) {
-          console.warn(`[casper-contract-service] Failed to parse CLValue bytes for escrow ${escrowId}:`, e);
+          console.error(`[casper-contract-service] Failed to deserialize CLValue bytes for escrow ${escrowId}:`, e);
+          return null;
         }
       }
       
-      if (!value) {
-        console.warn(`[casper-contract-service] No value extracted from CLValue for escrow ${escrowId}. CLValue structure:`, clValue);
-        return null;
-      }
-      
-      // Parse JSON if string
-      let data: any;
-      try {
-        data = typeof value === "string" ? JSON.parse(value) : value;
-      } catch (e) {
-        console.warn(`[casper-contract-service] Failed to parse value as JSON for escrow ${escrowId}, using as-is:`, value);
-        data = value;
+      // If still no data, try parsing as JSON string
+      if (!data && typeof clValue.value === 'string') {
+        try {
+          data = JSON.parse(clValue.value);
+        } catch (e) {
+          // Not JSON, skip
+        }
       }
       
       if (!data || typeof data !== 'object') {
-        console.warn(`[casper-contract-service] Invalid data structure for escrow ${escrowId}:`, data);
+        console.warn(`[casper-contract-service] No valid data extracted for escrow ${escrowId}. CLValue structure:`, {
+          cl_type: clValue.cl_type,
+          has_parsed: !!clValue.parsed,
+          has_value: !!clValue.value,
+          has_bytes: !!clValue.bytes,
+          bytes_length: clValue.bytes?.length
+        });
         return null;
       }
       
