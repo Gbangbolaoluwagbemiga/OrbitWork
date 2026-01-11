@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCasper } from "@/contexts/casper-context";
-import { Copy, LogOut, RefreshCw } from "lucide-react";
+import { Copy, ExternalLink, LogOut, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function WalletButton() {
@@ -34,11 +34,23 @@ export function WalletButton() {
 
   const handleRefreshBalance = async () => {
     if (refreshBalance) {
+      toast({
+        title: "Fetching balance...",
+        description: "Please wait",
+      });
       await refreshBalance();
       toast({
-        title: "Balance refreshed",
-        description: "Wallet balance has been updated",
+        title: "Balance refresh attempted",
+        description: balance === "0" 
+          ? "⚠️ Unable to fetch balance. RPC nodes may be down. Check console for details."
+          : "✅ Balance updated successfully",
       });
+    }
+  };
+
+  const handleViewOnExplorer = () => {
+    if (address) {
+      window.open(`https://testnet.cspr.live/account/${address}`, '_blank');
     }
   };
 
@@ -49,6 +61,7 @@ export function WalletButton() {
           void handleConnect();
         }}
         variant="default"
+        className="relative"
       >
         Connect Casper Wallet
       </Button>
@@ -69,7 +82,7 @@ export function WalletButton() {
                <span className="text-[10px] text-white font-bold">C</span>
             </div>
 
-            <span>{Number(balance || 0).toFixed(4)} CSPR</span>
+            <span className={balance === "0" ? "text-yellow-500" : ""}>{Number(balance || 0).toFixed(4)} CSPR</span>
             <span className="text-muted-foreground">·</span>
 
             {/* Address */}
@@ -106,6 +119,11 @@ export function WalletButton() {
         <DropdownMenuItem onClick={handleRefreshBalance} className="cursor-pointer">
           <RefreshCw className="mr-2 h-4 w-4" />
           <span>Refresh Balance</span>
+        </DropdownMenuItem>
+        
+        <DropdownMenuItem onClick={handleViewOnExplorer} className="cursor-pointer">
+          <ExternalLink className="mr-2 h-4 w-4" />
+          <span>View on Explorer</span>
         </DropdownMenuItem>
         
         <DropdownMenuSeparator />

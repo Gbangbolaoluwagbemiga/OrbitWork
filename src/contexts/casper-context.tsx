@@ -3,6 +3,7 @@ import {
   use,
   useState,
   useEffect,
+  useCallback,
   type ReactNode,
 } from "react";
 import { connectCasperWallet, getCasperBalance } from "@/lib/casper/casper-wallet";
@@ -23,21 +24,40 @@ export function CasperProvider({ children }: { children: ReactNode }) {
   const [balance, setBalance] = useState<string>("0");
   const [isConnected, setIsConnected] = useState(false);
 
-  const refreshBalance = async () => {
+  const refreshBalance = useCallback(async () => {
     if (address) {
       const bal = await getCasperBalance(address);
-      setBalance(bal);
+      // Only update if we got a valid balance (not "0" from an error)
+      setBalance(prevBalance => {
+        if (bal !== "0" || prevBalance === "0") {
+          return bal;
+        }
+        return prevBalance;
+      });
     }
-  };
+  }, [address]);
 
   const connect = async () => {
-    const publicKey = await connectCasperWallet();
-    if (publicKey) {
-      setAddress(publicKey);
-      setIsConnected(true);
-      const bal = await getCasperBalance(publicKey);
-      setBalance(bal);
-      localStorage.setItem("casper_address", publicKey);
+    try {
+      const publicKey = await connectCasperWallet();
+      if (publicKey) {
+        setAddress(publicKey);
+        setIsConnected(true);
+        
+        // Try to load cached balance immediately for better UX
+        const cachedBalance = localStorage.getItem(`casper_balance_${publicKey}`);
+        if (cachedBalance) {
+          setBalance(cachedBalance);
+          console.log("Loaded cached balance:", cachedBalance);
+        }
+        
+        // Then fetch fresh balance
+        const bal = await getCasperBalance(publicKey);
+        setBalance(bal);
+        localStorage.setItem("casper_address", publicKey);
+      }
+    } catch (error) {
+      console.error("Error during wallet connection:", error);
     }
   };
 
@@ -54,9 +74,38 @@ export function CasperProvider({ children }: { children: ReactNode }) {
     if (savedAddress) {
       setAddress(savedAddress);
       setIsConnected(true);
-      getCasperBalance(savedAddress).then(setBalance);
+      
+      // Load cached balance immediately
+      const cachedBalance = localStorage.getItem(`casper_balance_${savedAddress}`);
+      if (cachedBalance) {
+        setBalance(cachedBalance);
+        console.log("✅ Loaded cached balance on startup:", cachedBalance, "CSPR");
+      }
+      
+      // Try to fetch fresh balance, but don't wait for it
+      getCasperBalance(savedAddress).then(bal => {
+        if (bal !== "0") {
+          setBalance(bal);
+        }
+        // If it's "0" and we have a cached balance, keep the cached one
+      }).catch(err => {
+        console.warn("Failed to fetch balance on startup, using cached value:", err);
+      });
     }
   }, []);
+
+  // Auto-refresh balance every 2 minutes when connected (reduced frequency to avoid error spam)
+  useEffect(() => {
+    if (!address || !isConnected) return;
+
+    const intervalId = setInterval(() => {
+      refreshBalance().catch(err => {
+        console.warn("Auto-refresh failed, will retry later:", err);
+      });
+    }, 120000); // 2 minutes
+
+    return () => clearInterval(intervalId);
+  }, [address, isConnected, refreshBalance]);
 
   return (
     <CasperContext
