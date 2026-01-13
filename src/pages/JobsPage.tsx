@@ -236,68 +236,196 @@ export default function JobsPage() {
           try {
             const escrowData = await getEscrow(i);
             if (!escrowData) {
+              console.log(`[fetchOpenJobs] Escrow ${i} returned null, skipping`);
               continue;
             }
 
-            // Check if this is an open job (beneficiary is null or zero address)
+            console.log(`[fetchOpenJobs] Escrow ${i} data:`, {
+              creator: escrowData.creator,
+              freelancer: escrowData.freelancer,
+              is_open_job: escrowData.is_open_job,
+              project_title: escrowData.project_title,
+              status: escrowData.status,
+            });
+
+            // Check if this is an open job (beneficiary is null or zero address, OR is_open_job flag is true)
             // For Casper, null beneficiary means it's an open job
             const zeroAddress =
               "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
             const isOpenJob =
+              escrowData.is_open_job === true ||
               !escrowData.freelancer ||
               escrowData.freelancer === zeroAddress ||
               escrowData.freelancer === "";
 
+            console.log(`[fetchOpenJobs] Escrow ${i} isOpenJob check:`, {
+              is_open_job_flag: escrowData.is_open_job,
+              freelancer: escrowData.freelancer,
+              isOpenJob,
+            });
+
             if (isOpenJob) {
+              try {
               // Check if current user is the job creator (should not be able to apply to own job)
-              const isJobCreator =
-                casper.address &&
-                escrowData.creator &&
-                escrowData.creator.toLowerCase().trim() ===
-                  casper.address.toLowerCase().trim();
+                // Convert public key hex to AccountHash for comparison
+                // Creator from contract is AccountHash (64 hex chars), user address is public key hex (66 chars starting with 01/02)
+                let isJobCreator = false;
+                if (casper.address && escrowData.creator) {
+                  try {
+                    // Import PublicKey to convert public key to AccountHash
+                    const { PublicKey } = await import("casper-js-sdk");
+                    const userPublicKey = PublicKey.fromHex(casper.address);
+                    const userAccountHash = userPublicKey.accountHash().toHex().toLowerCase();
+                    const creatorHash = escrowData.creator.toLowerCase().trim();
+                    isJobCreator = userAccountHash === creatorHash;
+                    
+                    console.log(`[fetchOpenJobs] Job ${i} creator check:`, {
+                      creator: escrowData.creator,
+                      creatorHash,
+                      userAddress: casper.address,
+                      userAccountHash,
+                      isJobCreator,
+                    });
+                  } catch (e) {
+                    console.warn(`[fetchOpenJobs] Error comparing addresses for job ${i}:`, e);
+                    // Fallback: simple string comparison
+                    const normalizedCreator = escrowData.creator.toLowerCase().trim();
+                    const normalizedUser = (casper.address || "").toLowerCase().trim();
+                    isJobCreator = normalizedCreator === normalizedUser || normalizedCreator.includes(normalizedUser) || normalizedUser.includes(normalizedCreator);
+                  }
+                }
 
               // Check if current user has already applied to this job
               // First check local state (preserves state after applying)
               let userHasApplied = hasApplied[i] || false;
               let applicationCount = 0;
 
-              // Only check blockchain if not already in local state
+              // Check blockchain if not already in local state
               if (!userHasApplied && casper.address) {
-                // TODO: Implement hasUserApplied for Casper
-                // For now, set to false - applications are stored in dictionary
-                userHasApplied = false;
+                try {
+                  const { hasUserApplied: checkHasApplied } = await import("@/lib/casper/casper-contract-service");
+                  userHasApplied = await checkHasApplied(i, casper.address);
                   console.log(
-                  `User ${casper.address} has applied to job ${i}:`,
+                    `User ${casper.address} has applied to job ${i}:`,
                     userHasApplied
                   );
+                } catch (e) {
+                  console.warn(`[fetchOpenJobs] Error checking if user applied to job ${i}:`, e);
+                  userHasApplied = false;
+                }
               }
 
-              // For Casper, timestamps are in milliseconds (blocktime)
-              // created_at and deadline are u64 timestamps from get_blocktime()
-              const createdTimestamp = escrowData.created_at || Date.now();
-              const deadlineTimestamp = escrowData.deadline || 0;
-              const durationInSeconds = deadlineTimestamp > createdTimestamp 
-                ? Math.max(0, deadlineTimestamp - createdTimestamp) / 1000 
-                : 0;
-              const durationInDays = Math.ceil(durationInSeconds / (60 * 60 * 24));
-              // Casper timestamps are already in milliseconds
-              const approxCreatedAt = typeof createdTimestamp === 'number' ? createdTimestamp : Date.now();
+                // For Casper, timestamps might be in seconds or milliseconds
+                // Check the magnitude to determine: if > 1e12, it's milliseconds; if < 1e12, it's seconds
+                let createdTimestamp: number;
+                if (typeof escrowData.created_at === 'bigint') {
+                  createdTimestamp = Number(escrowData.created_at);
+                } else if (typeof escrowData.created_at === 'number') {
+                  createdTimestamp = escrowData.created_at;
+                } else {
+                  createdTimestamp = Date.now();
+                }
+                
+                // Convert seconds to milliseconds if needed (timestamps < 1e12 are likely seconds)
+                if (createdTimestamp > 0 && createdTimestamp < 1e12) {
+                  createdTimestamp = createdTimestamp * 1000;
+                }
+                
+                // Validate timestamp is reasonable (not corrupted)
+                const now = Date.now();
+                if (isNaN(createdTimestamp) || createdTimestamp < 0 || createdTimestamp > now + 86400000 * 365 * 10) {
+                  console.warn(`[fetchOpenJobs] Invalid created_at timestamp ${createdTimestamp} for escrow ${i}, using current time`);
+                  createdTimestamp = now;
+                }
+                
+                let deadlineTimestamp: number;
+                if (typeof escrowData.deadline === 'bigint') {
+                  deadlineTimestamp = Number(escrowData.deadline);
+                } else if (typeof escrowData.deadline === 'number') {
+                  deadlineTimestamp = escrowData.deadline;
+                } else {
+                  deadlineTimestamp = 0;
+                }
+                
+                // Convert seconds to milliseconds if needed
+                if (deadlineTimestamp > 0 && deadlineTimestamp < 1e12) {
+                  deadlineTimestamp = deadlineTimestamp * 1000;
+                }
+                
+                // Validate deadline timestamp
+                if (isNaN(deadlineTimestamp) || deadlineTimestamp < 0 || deadlineTimestamp < createdTimestamp) {
+                  deadlineTimestamp = createdTimestamp + (7 * 24 * 60 * 60 * 1000); // Default to 7 days from creation
+                }
+                
+                const durationInSeconds = deadlineTimestamp > createdTimestamp 
+                  ? Math.max(0, deadlineTimestamp - createdTimestamp) / 1000 
+                  : 0;
+                const durationInDays = Math.ceil(durationInSeconds / (60 * 60 * 24));
+                const approxCreatedAt = createdTimestamp;
+
+                // Clean up corrupted project_title (remove non-printable characters)
+                let projectTitle = escrowData.project_title || "";
+                if (projectTitle && typeof projectTitle === 'string') {
+                  // Remove non-printable characters and control characters
+                  projectTitle = projectTitle.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+                  if (!projectTitle || projectTitle.length < 2) {
+                    projectTitle = `Escrow #${i}`;
+                  }
+                } else {
+                  projectTitle = `Escrow #${i}`;
+                }
+
+                // Clean up project_description
+                let projectDescription = escrowData.project_description || "";
+                if (projectDescription && typeof projectDescription === 'string') {
+                  projectDescription = projectDescription.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+                }
+
+                // Handle invalid status - default to "pending" if status is out of range
+                let jobStatus: "pending" | "disputed" | "completed" | "active" = "pending";
+                try {
+                  const statusNum = typeof escrowData.status === 'number' ? escrowData.status : parseInt(String(escrowData.status)) || 0;
+                  if (statusNum >= 0 && statusNum <= 4) {
+                    jobStatus = getStatusFromNumber(statusNum);
+                  } else {
+                    console.warn(`[fetchOpenJobs] Invalid status ${statusNum} for escrow ${i}, defaulting to pending`);
+                  }
+                } catch (e) {
+                  console.warn(`[fetchOpenJobs] Error converting status for escrow ${i}:`, e);
+                }
+
+                // Convert amount from motes to CSPR (1 CSPR = 1e9 motes)
+                // amount is always a string from CasperEscrowData
+                let amountStr: string = escrowData.amount || "0";
+                
+                // Validate amount is reasonable (not corrupted)
+                try {
+                  const amountNum = BigInt(amountStr);
+                  const maxAmount = BigInt("1000000000000000000"); // Max 1 billion CSPR in motes
+                  if (amountNum < 0n || amountNum > maxAmount) {
+                    console.warn(`[fetchOpenJobs] Suspicious amount ${amountStr} for escrow ${i}, using 0`);
+                    amountStr = "0";
+                  }
+                } catch (e) {
+                  console.warn(`[fetchOpenJobs] Invalid amount format ${amountStr} for escrow ${i}, using 0`);
+                  amountStr = "0";
+                }
 
               // Convert contract data to our Escrow type
-              // All data is from blockchain - fetched via Casper contract service
+                // All data is from blockchain - fetched via Casper contract service
               const job: Escrow = {
                 id: i.toString(),
-                payer: escrowData.creator, // depositor/creator (from blockchain)
+                  payer: escrowData.creator || "", // depositor/creator (from blockchain)
                 beneficiary: escrowData.freelancer || zeroAddress, // beneficiary/freelancer (from blockchain)
                 token: escrowData.token || "", // token (from blockchain)
-                totalAmount: escrowData.amount || "0", // totalAmount (from blockchain)
+                  totalAmount: amountStr, // totalAmount in motes (from blockchain)
                 releasedAmount: "0", // paidAmount - would need to calculate from milestones
-                status: getStatusFromNumber(escrowData.status), // status (from blockchain)
-                createdAt: approxCreatedAt, // Timestamp from Casper blockchain
-                duration: durationInDays, // Duration in days (calculated from timestamps)
+                  status: jobStatus, // status (from blockchain, with fallback)
+                  createdAt: approxCreatedAt, // Timestamp from Casper blockchain
+                  duration: durationInDays, // Duration in days (calculated from timestamps)
                 milestones: [], // Would need to fetch milestones separately
-                projectTitle: escrowData.project_title || "", // projectTitle (from blockchain)
-                projectDescription: escrowData.project_description || "", // projectDescription (from blockchain)
+                  projectTitle: projectTitle, // projectTitle (cleaned from blockchain)
+                  projectDescription: projectDescription, // projectDescription (cleaned from blockchain)
                 isOpenJob: true,
                 applications: [], // Would need to fetch applications separately
                 applicationCount: applicationCount, // Add real application count
@@ -313,9 +441,11 @@ export default function JobsPage() {
                 createdAt: new Date(job.createdAt).toISOString(),
                 projectTitle: job.projectTitle,
                 isJobCreator: job.isJobCreator,
+                  casperAddress: casper.address,
               });
 
               openJobs.push(job);
+                console.log(`[fetchOpenJobs] Successfully added job ${i} to openJobs. Total: ${openJobs.length}`);
 
               // Store application status from blockchain check
               setHasApplied((prev) => {
@@ -329,6 +459,30 @@ export default function JobsPage() {
                 );
                 return newState;
               });
+              } catch (jobError: any) {
+                console.error(`[fetchOpenJobs] Error creating job object for escrow ${i}:`, jobError);
+                // Still try to add a minimal job so it shows up
+                const minimalJob: Escrow = {
+                  id: i.toString(),
+                  payer: escrowData.creator || "",
+                  beneficiary: escrowData.freelancer || zeroAddress,
+                  token: escrowData.token || "",
+                  totalAmount: escrowData.amount || "0",
+                  releasedAmount: "0",
+                  status: "pending",
+                  createdAt: Date.now(),
+                  duration: 0,
+                  milestones: [],
+                  projectTitle: `Escrow #${i}`,
+                  projectDescription: "Job data partially corrupted but still available",
+                  isOpenJob: true,
+                  applications: [],
+                  applicationCount: 0,
+                  isJobCreator: false,
+                };
+                openJobs.push(minimalJob);
+                console.log(`[fetchOpenJobs] Added minimal job ${i} due to error. Total: ${openJobs.length}`);
+              }
             }
           } catch (error) {
             // Skip escrows that don't exist or user doesn't have access to

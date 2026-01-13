@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { useWeb3 } from "@/hooks/use-web3";
+import { useCasper } from "@/contexts/casper-context";
 import { useToast } from "@/hooks/use-toast";
 import { useJobCreatorStatus } from "@/hooks/use-job-creator-status";
 import { usePendingApprovals } from "@/hooks/use-pending-approvals";
-import { CONTRACTS } from "@/lib/web3/config";
+import { getNextEscrowId, getEscrow, getApplications } from "@/lib/casper/casper-contract-service";
 
 import {
   useNotifications,
@@ -45,7 +45,7 @@ const getStatusFromNumber = (
 };
 
 export default function ApprovalsPage() {
-  const { wallet } = useWeb3();
+  const { address: casperAddress, isConnected: casperIsConnected } = useCasper();
   const { toast } = useToast();
   const { isJobCreator, loading: isJobCreatorLoading } = useJobCreatorStatus();
   const { refreshApprovals } = usePendingApprovals();
@@ -72,35 +72,12 @@ export default function ApprovalsPage() {
 
 
   const fetchMyJobs = useCallback(async () => {
-    if (!wallet.isConnected || !isJobCreator) return;
+    if (!casperIsConnected || !casperAddress || !isJobCreator) return;
 
     setLoading(true);
     try {
-      // Get current ledger sequence once (needed for timestamp conversion)
-      let currentLedger = 0;
-      try {
-        const { rpc } = await import("@stellar/stellar-sdk");
-        const { getCurrentNetwork } = await import("@/lib/web3/casper-legacy-config");
-        const network = getCurrentNetwork();
-        const rpcServer = new rpc.Server(network.rpcUrl);
-        const latestLedger = await rpcServer.getLatestLedger();
-        currentLedger = latestLedger.sequence;
-      } catch (error) {
-        console.warn(
-          "Could not fetch current ledger, using approximate timestamp:",
-          error
-        );
-        // Fallback: use current time as approximation
-        const SECONDS_PER_LEDGER = 5;
-        currentLedger = Math.floor(Date.now() / 1000 / SECONDS_PER_LEDGER);
-      }
-
-      // Use ContractService instead of contract.call - it reads from blockchain
-      const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
-
-      // Get next escrow ID from blockchain (not hardcoded)
-      const nextEscrowId = await contractService.getNextEscrowId();
+      // Get next escrow ID from Casper blockchain
+      const nextEscrowId = await getNextEscrowId();
       console.log(
         `[ApprovalsPage] next_escrow_id from blockchain: ${nextEscrowId}`
       );
@@ -112,46 +89,56 @@ export default function ApprovalsPage() {
       for (let i = 1; i <= maxEscrowsToCheck; i++) {
         try {
           console.log(`[ApprovalsPage] Checking escrow ${i}...`);
-          const escrow = await contractService.getEscrow(i);
+          const escrowData = await getEscrow(i);
 
-          if (!escrow) {
+          if (!escrowData) {
             console.log(`[ApprovalsPage] Escrow ${i} does not exist`);
             continue;
           }
 
-          // Check if this is my job
-          const isMyJob =
-            wallet.address &&
-            escrow.creator &&
-            escrow.creator.toLowerCase().trim() ===
-              wallet.address.toLowerCase().trim();
+          // Normalize addresses for comparison
+          const normalizeAddress = (addr: string | undefined | null): string => {
+            if (!addr) return "";
+            return addr.replace(/^(account-hash-|hash-)/, "").toLowerCase().trim();
+          };
+
+          const normalizedCreator = normalizeAddress(escrowData.creator);
+          const normalizedUser = normalizeAddress(casperAddress);
+
+          // Check if this is my job by comparing AccountHash
+          let isMyJob = false;
+          try {
+            const { PublicKey } = await import("casper-js-sdk");
+            const userPublicKey = PublicKey.fromHex(casperAddress);
+            const userAccountHash = userPublicKey.accountHash().toHex().toLowerCase();
+            isMyJob = normalizedCreator === userAccountHash || normalizedCreator === normalizedUser;
+          } catch (e) {
+            // Fallback: simple string comparison
+            isMyJob = normalizedCreator === normalizedUser;
+          }
 
           console.log(
-            `[ApprovalsPage] Escrow ${i} creator: ${escrow.creator}, isMyJob: ${isMyJob}`
+            `[ApprovalsPage] Escrow ${i} creator: ${escrowData.creator}, normalized: ${normalizedCreator}, user: ${normalizedUser}, isMyJob: ${isMyJob}`
           );
 
           if (isMyJob) {
-            // Check if it's an open job (beneficiary is zero address)
-            const isOpenJob =
-              !escrow.freelancer ||
-              escrow.freelancer ===
-                "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF" ||
-              escrow.freelancer === "";
+            // Check if it's an open job (no freelancer assigned)
+            const isOpenJob = escrowData.is_open_job && !escrowData.freelancer;
 
             console.log(
-              `[ApprovalsPage] Escrow ${i} isOpenJob: ${isOpenJob}, freelancer: ${escrow.freelancer}`
+              `[ApprovalsPage] Escrow ${i} isOpenJob: ${isOpenJob}, freelancer: ${escrowData.freelancer}`
             );
 
             if (isOpenJob) {
               let applicationCount = 0;
               const applications: Application[] = [];
 
-              // Get applications from storage
+              // Get applications from Casper blockchain
               try {
                 console.log(
                   `[ApprovalsPage] Fetching applications for job ${i}`
                 );
-                const apps = await contractService.getApplications(i);
+                const apps = await getApplications(i);
                 console.log(
                   `[ApprovalsPage] Got ${apps.length} applications for job ${i}:`,
                   apps
@@ -159,24 +146,27 @@ export default function ApprovalsPage() {
                 applicationCount = apps.length;
 
                 // Convert to Application format
-                // IMPORTANT: applied_at is also a LEDGER SEQUENCE NUMBER, not a Unix timestamp!
-                // Calculate approximate timestamp: current time - (current_ledger - applied_at) * 5 seconds
-                const SECONDS_PER_LEDGER = 5;
+                // Casper timestamps are in milliseconds (u64)
                 for (const app of apps) {
-                  const appliedAtLedger = app.applied_at || 0;
-                  const ledgersAgo = currentLedger - appliedAtLedger;
-                  const secondsAgo = ledgersAgo * SECONDS_PER_LEDGER;
-                  const approxAppliedAt = Date.now() - secondsAgo * 1000;
+                  let appliedAt = Date.now();
+                  if (app.applied_at) {
+                    // Handle BigInt or number
+                    const appliedAtValue = typeof app.applied_at === 'bigint' 
+                      ? Number(app.applied_at) 
+                      : app.applied_at;
+                    // Check if in seconds (less than 1e12) or milliseconds
+                    appliedAt = appliedAtValue < 1e12 ? appliedAtValue * 1000 : appliedAtValue;
+                  }
 
                   applications.push({
-                    freelancerAddress: app.freelancer,
-                    coverLetter: app.cover_letter,
-                    proposedTimeline: app.proposed_timeline,
-                    appliedAt: approxAppliedAt, // Approximate timestamp from ledger sequence
+                    freelancerAddress: app.freelancer || "",
+                    coverLetter: app.cover_letter || "",
+                    proposedTimeline: app.proposed_timeline || 0,
+                    appliedAt,
                     status: "pending" as const,
-                    badge: app.badge,
-                    averageRating: app.averageRating,
-                    ratingCount: app.ratingCount,
+                    badge: app.badge || "Beginner",
+                    averageRating: app.averageRating || 0,
+                    ratingCount: app.ratingCount || 0,
                   });
                 }
 
@@ -191,38 +181,52 @@ export default function ApprovalsPage() {
                 applicationCount = 0;
               }
 
-              // IMPORTANT: created_at and deadline are LEDGER SEQUENCE NUMBERS, not timestamps!
-              // Casper ledgers close approximately every 5 seconds
-              // Duration = (deadline - created_at) * 5 seconds
-              const SECONDS_PER_LEDGER = 5;
-              const ledgerDiff = escrow.deadline - escrow.created_at;
-              const durationInSeconds = ledgerDiff * SECONDS_PER_LEDGER;
+              // Casper timestamps are in milliseconds (u64)
+              let createdTimestamp = Date.now();
+              if (escrowData.created_at) {
+                const createdValue = typeof escrowData.created_at === 'bigint' 
+                  ? Number(escrowData.created_at) 
+                  : escrowData.created_at;
+                createdTimestamp = createdValue < 1e12 ? createdValue * 1000 : createdValue;
+              }
+
+              let deadlineTimestamp = createdTimestamp + (7 * 24 * 60 * 60 * 1000); // Default 7 days
+              if (escrowData.deadline) {
+                const deadlineValue = typeof escrowData.deadline === 'bigint' 
+                  ? Number(escrowData.deadline) 
+                  : escrowData.deadline;
+                deadlineTimestamp = deadlineValue < 1e12 ? deadlineValue * 1000 : deadlineValue;
+              }
+
               const durationInDays = Math.max(
                 0,
-                durationInSeconds / (24 * 60 * 60)
+                (deadlineTimestamp - createdTimestamp) / (24 * 60 * 60 * 1000)
               );
 
-              // Calculate approximate timestamp: current time - (current_ledger - created_at) * 5 seconds
-              const ledgersAgo = currentLedger - escrow.created_at;
-              const secondsAgo = ledgersAgo * SECONDS_PER_LEDGER;
-              const approxCreatedAt = Date.now() - secondsAgo * 1000;
+              // Convert amount from motes to CSPR
+              let totalAmount = "0";
+              if (escrowData.amount) {
+                const amountValue = typeof escrowData.amount === 'bigint' 
+                  ? escrowData.amount 
+                  : BigInt(escrowData.amount);
+                const csprAmount = Number(amountValue) / 1e9;
+                totalAmount = csprAmount.toString();
+              }
 
               const job: JobWithApplications = {
                 id: i.toString(),
-                payer: escrow.creator,
-                beneficiary:
-                  escrow.freelancer ||
-                  "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
-                token: escrow.token || "native",
-                totalAmount: escrow.amount || "0",
-                releasedAmount: "0", // TODO: Get from escrow if available
-                status: getStatusFromNumber(escrow.status || 0),
-                createdAt: approxCreatedAt, // Approximate timestamp from ledger sequence
-                duration: durationInDays, // Duration in days (calculated correctly from ledger sequence)
-                milestones: escrow.milestones || [],
+                payer: escrowData.creator || "",
+                beneficiary: escrowData.freelancer || "",
+                token: escrowData.token || "native",
+                totalAmount,
+                releasedAmount: "0",
+                status: getStatusFromNumber(escrowData.status || 0),
+                createdAt: createdTimestamp,
+                duration: durationInDays,
+                milestones: escrowData.milestones || [],
                 projectDescription:
-                  escrow.project_title ||
-                  escrow.project_description ||
+                  escrowData.project_title ||
+                  escrowData.project_description ||
                   "No description",
                 isOpenJob: true,
                 applications,
@@ -233,12 +237,14 @@ export default function ApprovalsPage() {
             }
           }
         } catch (error) {
+          console.error(`[ApprovalsPage] Error processing escrow ${i}:`, error);
           continue;
         }
       }
 
       setJobs(myJobs);
     } catch (error) {
+      console.error("[ApprovalsPage] Error fetching jobs:", error);
       toast({
         title: "Failed to load jobs",
         description: "Could not fetch your job postings",
@@ -247,21 +253,21 @@ export default function ApprovalsPage() {
     } finally {
       setLoading(false);
     }
-  }, [wallet.isConnected, isJobCreator, wallet.address]);
+  }, [casperIsConnected, casperAddress, isJobCreator]);
 
   const handleApproveFreelancer = async () => {
     console.log("[handleApproveFreelancer] Called", {
       selectedJobForApproval: selectedJobForApproval?.id,
       selectedFreelancer: selectedFreelancer?.freelancerAddress,
-      walletConnected: wallet.isConnected,
-      walletAddress: wallet.address,
+      walletConnected: casperIsConnected,
+      walletAddress: casperAddress,
     });
 
-    if (!selectedJobForApproval || !selectedFreelancer || !wallet.isConnected) {
+    if (!selectedJobForApproval || !selectedFreelancer || !casperIsConnected) {
       console.error("[handleApproveFreelancer] Missing required data:", {
         selectedJobForApproval: !!selectedJobForApproval,
         selectedFreelancer: !!selectedFreelancer,
-        walletConnected: wallet.isConnected,
+        walletConnected: casperIsConnected,
       });
       toast({
         title: "Error",
@@ -271,7 +277,7 @@ export default function ApprovalsPage() {
       return;
     }
 
-    if (!wallet.address) {
+    if (!casperAddress) {
       console.error("[handleApproveFreelancer] Wallet address is missing");
       toast({
         title: "Error",
@@ -285,24 +291,17 @@ export default function ApprovalsPage() {
 
     try {
       console.log("[handleApproveFreelancer] Starting approval process...");
-      // Use ContractService instead of contract.send - it handles address conversion and auth properly
-      const { ContractService } = await import("@/lib/web3/contract-service");
-      const contractService = new ContractService(CONTRACTS.ORBITWORK_ESCROW);
-
       console.log(
-        "[handleApproveFreelancer] Calling contractService.acceptFreelancer...",
+        "[handleApproveFreelancer] TODO: Implement acceptFreelancer for Casper...",
         {
-          escrow_id: Number(selectedJobForApproval.id),
-          freelancer: selectedFreelancer.freelancerAddress,
-          depositor: wallet.address,
+          escrow_id: Number(selectedJobForApproval!.id),
+          freelancer: selectedFreelancer!.freelancerAddress,
+          depositor: casperAddress,
         }
       );
 
-      await contractService.acceptFreelancer({
-        escrow_id: Number(selectedJobForApproval.id),
-        freelancer: selectedFreelancer.freelancerAddress,
-        depositor: wallet.address,
-      });
+      // TODO: Implement acceptFreelancer for Casper
+      throw new Error("acceptFreelancer not yet implemented for Casper");
 
       console.log("[handleApproveFreelancer] Transaction successful!");
 
@@ -312,23 +311,26 @@ export default function ApprovalsPage() {
       });
 
       // Add notification for freelancer approval - notify the FREELANCER
-      addNotification(
-        createApplicationNotification(
-          "approved",
-          Number(selectedJobForApproval.id),
-          selectedFreelancer.freelancerAddress,
-          {
-            jobTitle:
-              selectedJobForApproval.projectDescription ||
-              `Job #${selectedJobForApproval.id}`,
-            freelancerName:
-              selectedFreelancer.freelancerAddress.slice(0, 6) +
-              "..." +
-              selectedFreelancer.freelancerAddress.slice(-4),
-          }
-        ),
-        [selectedFreelancer.freelancerAddress] // Notify the freelancer
-      );
+      if (selectedJobForApproval && selectedFreelancer) {
+        // TypeScript narrowing: we already checked both are not null
+        const jobId = selectedJobForApproval!.id;
+        const jobTitle = selectedJobForApproval!.projectDescription || `Job #${jobId}`;
+        const freelancerAddr = selectedFreelancer!.freelancerAddress;
+        const freelancerName = freelancerAddr.slice(0, 6) + "..." + freelancerAddr.slice(-4);
+        
+        addNotification(
+          createApplicationNotification(
+            "approved",
+            Number(jobId),
+            freelancerAddr,
+            {
+              jobTitle,
+              freelancerName,
+            }
+          ),
+          [freelancerAddr] // Notify the freelancer
+        );
+      }
 
       // Close modals first
       setSelectedJob(null);
@@ -363,20 +365,20 @@ export default function ApprovalsPage() {
   };
 
   useEffect(() => {
-    if (wallet.isConnected && isJobCreator) {
+    if (casperIsConnected && isJobCreator) {
       fetchMyJobs();
     }
-  }, [wallet.isConnected, isJobCreator, fetchMyJobs]);
+  }, [casperIsConnected, isJobCreator, fetchMyJobs]);
 
   // Don't redirect - let client see the page even if no approvals yet
   // They might want to see their jobs
 
   // Show loading while checking job creator status
   if (isJobCreatorLoading) {
-    return <ApprovalsLoading isConnected={wallet.isConnected} />;
+    return <ApprovalsLoading isConnected={casperIsConnected} />;
   }
 
-  if (!wallet.isConnected) {
+  if (!casperIsConnected) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
@@ -408,7 +410,7 @@ export default function ApprovalsPage() {
   }
 
   if (loading) {
-    return <ApprovalsLoading isConnected={wallet.isConnected} />;
+    return <ApprovalsLoading isConnected={casperIsConnected} />;
   }
 
   // const totalJobs = jobs.length; // Unused
