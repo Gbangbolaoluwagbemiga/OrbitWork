@@ -100,23 +100,7 @@ abstract contract WorkLifecycle is EscrowCore {
 
         emit MilestoneApproved(escrowId, milestoneIndex, msg.sender, amount, block.timestamp);
 
-        // GoodDollar Reward Claim
-        if (address(engagementRewards) != address(0)) {
-            try engagementRewards.appClaim(
-                msg.sender, // user (Client)
-                address(0), // inviter (none)
-                validUntilBlock,
-                signature
-            ) returns (bool success) {
-                if (!success) {
-                    emit RewardClaimFailed("Claim returned false");
-                }
-            } catch Error(string memory reason) {
-                emit RewardClaimFailed(reason);
-            } catch {
-                emit RewardClaimFailed("Unknown error");
-            }
-        }
+
 
         if (e.totalAmount >= MIN_REP_ELIGIBLE_ESCROW_VALUE) {
             _updateReputation(e.beneficiary, REPUTATION_PER_MILESTONE, "Milestone approved");

@@ -115,12 +115,7 @@ export default function CreateEscrowPage() {
           name: "USD Coin",
           symbol: "USDC",
         },
-        // GoodDollar (G$) on Celo
-        // Official address: 0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A
-        [CONTRACTS.GDOLLAR_CELO.toLowerCase()]: {
-          name: "GoodDollar",
-          symbol: "G$",
-        },
+
         // cUSD on Celo
         "0x765de816845861e75a25fca122bb6898b8b1282a": {
           name: "Celo Dollar",
@@ -232,7 +227,7 @@ export default function CreateEscrowPage() {
       // IMMEDIATE: Check known tokens directly (FAST - no event queries needed)
       // G$ and cUSD are already in TOKEN_INFO, just verify they're whitelisted
       const knownTokenAddresses = [
-        CONTRACTS.GDOLLAR_CELO?.toLowerCase(),
+
         "0x765de816845861e75a25fca122bb6898b8b1282a", // cUSD
       ].filter((addr): addr is string => Boolean(addr));
 
@@ -277,7 +272,7 @@ export default function CreateEscrowPage() {
       // OPTIONAL: Check recent events (last 500k blocks only) in background
       // This is non-blocking - we already have cached + known tokens showing
       let tokensFromEvents: string[] = [];
-      
+
       // Only query recent events if we have time (non-blocking)
       try {
         console.log("🔍 Checking recent events (last 500k blocks) in background...");
@@ -905,9 +900,8 @@ export default function CreateEscrowPage() {
         } catch (tokenError: any) {
           console.error("Token contract error:", tokenError);
           throw new Error(
-            `Token contract error: ${
-              tokenError.message ||
-              "Please check the token address and ensure you're on Somnia Dream Testnet"
+            `Token contract error: ${tokenError.message ||
+            "Please check the token address and ensure you're on Somnia Dream Testnet"
             }`
           );
         }
@@ -943,9 +937,9 @@ export default function CreateEscrowPage() {
           // Method 1: Direct wallet provider call (most reliable)
           try {
             if (typeof window !== "undefined" && window.ethereum) {
-            const walletProvider = new ethers.BrowserProvider(
-              window.ethereum as any
-            );
+              const walletProvider = new ethers.BrowserProvider(
+                window.ethereum as any
+              );
               const tokenContractDirect = new ethers.Contract(
                 checksummedTokenAddress,
                 ERC20_ABI,
@@ -1061,9 +1055,8 @@ export default function CreateEscrowPage() {
             throw balanceError;
           }
           throw new Error(
-            `Failed to check token balance: ${
-              balanceError.message ||
-              "Please ensure you have enough tokens and are on Somnia Dream Testnet"
+            `Failed to check token balance: ${balanceError.message ||
+            "Please ensure you have enough tokens and are on Somnia Dream Testnet"
             }`
           );
         }
@@ -1098,7 +1091,7 @@ export default function CreateEscrowPage() {
                   break;
                 }
               }
-            } catch (error) {}
+            } catch (error) { }
 
             await new Promise((resolve) => setTimeout(resolve, 2000));
             approvalAttempts++;
@@ -1117,8 +1110,7 @@ export default function CreateEscrowPage() {
         } catch (approvalError: any) {
           console.error("Approval error:", approvalError);
           throw new Error(
-            `Token approval failed: ${
-              approvalError.message || "Please try again"
+            `Token approval failed: ${approvalError.message || "Please try again"
             }`
           );
         }
@@ -1448,7 +1440,7 @@ export default function CreateEscrowPage() {
                 break;
               }
             }
-          } catch (error) {}
+          } catch (error) { }
 
           await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
           attempts++;
@@ -1495,7 +1487,7 @@ export default function CreateEscrowPage() {
                 break;
               }
             }
-          } catch (error) {}
+          } catch (error) { }
 
           await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
           attempts++;
@@ -1618,21 +1610,19 @@ export default function CreateEscrowPage() {
               {[1, 2, 3].map((s) => (
                 <div key={s} className="flex items-center gap-4">
                   <div
-                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${
-                      s === step
+                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${s === step
                         ? "border-primary bg-primary text-primary-foreground"
                         : s < step
-                        ? "border-primary bg-primary/20 text-primary"
-                        : "border-muted-foreground/30 text-muted-foreground"
-                    }`}
+                          ? "border-primary bg-primary/20 text-primary"
+                          : "border-muted-foreground/30 text-muted-foreground"
+                      }`}
                   >
                     {s < step ? <CheckCircle2 className="h-5 w-5" /> : s}
                   </div>
                   {s < 3 && (
                     <div
-                      className={`w-16 h-0.5 ${
-                        s < step ? "bg-primary" : "bg-muted-foreground/30"
-                      }`}
+                      className={`w-16 h-0.5 ${s < step ? "bg-primary" : "bg-muted-foreground/30"
+                        }`}
                     />
                   )}
                 </div>
@@ -1670,7 +1660,7 @@ export default function CreateEscrowPage() {
                       data.useNativeToken === false &&
                       (formData.token === ZERO_ADDRESS ||
                         formData.token?.toLowerCase() ===
-                          ZERO_ADDRESS.toLowerCase())
+                        ZERO_ADDRESS.toLowerCase())
                     ) {
                       // If unchecking native token and token is currently ZERO_ADDRESS, set to default
                       console.log(

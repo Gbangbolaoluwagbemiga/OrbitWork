@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Script} from "forge-std/Script.sol";
+import {Script, console} from "forge-std/Script.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
@@ -13,7 +13,7 @@ contract CreatePool is Script {
     using PoolIdLibrary for PoolKey;
     
     // Unichain Sepolia Testnet
-    IPoolManager constant POOL_MANAGER = IPoolManager(0x00b036b58a818b1bc34d502d3fe730db729e62ac);
+    IPoolManager constant POOL_MANAGER = IPoolManager(0x00B036B58a818B1BC34d502D3fE730Db729e62AC);
     
     // Square root price for 1:1 ratio (sqrt(1) * 2^96)
     uint160 constant SQRT_PRICE_1_1 = 79228162514264337593543950336;

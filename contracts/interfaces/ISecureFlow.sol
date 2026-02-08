@@ -129,7 +129,7 @@ interface ISecureFlow {
     event JobCreationPaused();
     event JobCreationUnpaused();
     event UserVerified(address indexed user, uint256 timestamp);
-    event RewardClaimFailed(string reason);
+
 
     // ===== Core Functions =====
     function createEscrow(

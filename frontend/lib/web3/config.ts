@@ -44,11 +44,6 @@ export const CONTRACTS = {
   USDC: "0x765DE816845861e75A25fCA122bb6898B8B1282a", // cUSD on Celo
   MOCK_ERC20: "0x765DE816845861e75A25fCA122bb6898B8B1282a", // cUSD on Celo
 
-  // GoodDollar (G$) on Celo Mainnet
-  // Official address: https://docs.gooddollar.org/
-  GDOLLAR_CELO: 
-    process.env.NEXT_PUBLIC_GDOLLAR_CELO || 
-    "0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A", // G$ on Celo (official)
 
   CELOSCAN_API_KEY:
     process.env.NEXT_PUBLIC_CELOSCAN_API_KEY ||

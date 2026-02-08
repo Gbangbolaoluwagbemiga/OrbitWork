@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import "../interfaces/ISecureFlow.sol";
-import "../interfaces/IEngagementRewards.sol";
+
 import "../interfaces/IEscrowHook.sol";
 
 abstract contract EscrowCore is ReentrancyGuard, Ownable, Pausable, ISecureFlow {
@@ -59,8 +59,7 @@ abstract contract EscrowCore is ReentrancyGuard, Ownable, Pausable, ISecureFlow 
     mapping(address => bool) public selfVerifiedUsers;
     mapping(address => uint256) public verificationTimestamp;
 
-    // GoodDollar Engagement Rewards
-    IEngagementRewards public engagementRewards;
+
 
     // Uniswap v4 Hook
     IEscrowHook public escrowHook;
