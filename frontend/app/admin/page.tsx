@@ -171,7 +171,7 @@ export default function AdminPage() {
 
       // Check known tokens directly (normalize to lowercase to avoid duplicates)
       const tokensToCheck = [
-        CONTRACTS.CUSD_MAINNET,
+        "0xa04a2c6a219080C2E1Ff99B34FD79280661188AA", // Test Token (OWT)
         CONTRACTS.MOCK_ERC20,
         ...knownWhitelistedTokens,
       ]
@@ -525,7 +525,7 @@ export default function AdminPage() {
         ...new Set([
           ...uniqueWhitelistedTokens, // From initial direct checks
           ...allWhitelistedTokensFromEvents, // From event queries
-          CONTRACTS.CUSD_MAINNET?.toLowerCase(),
+          "0xa04a2c6a219080C2E1Ff99B34FD79280661188AA"?.toLowerCase(), // Test Token
           CONTRACTS.MOCK_ERC20?.toLowerCase(),
           ...knownWhitelistedTokens.map((t) => t.toLowerCase()),
         ]),
