@@ -102,9 +102,9 @@ export function WalletButton() {
         >
           {/* Desktop/tablet: show network + balance + avatar */}
           <div className="hidden md:flex items-center gap-2">
-            {/* Dynamic network icon - Unichain Sepolia */}
+            {/* Uniswap-themed network icon */}
             <div className="w-4 h-4 rounded-full overflow-hidden">
-              <div className="w-full h-full bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
+              <div className="w-full h-full bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center">
                 <div className="w-2 h-2 bg-white rounded-full"></div>
               </div>
             </div>
@@ -130,7 +130,7 @@ export function WalletButton() {
           {/* Mobile: show network icon + balance */}
           <div className="flex md:hidden items-center gap-1.5">
             <div className="w-3.5 h-3.5 rounded-full overflow-hidden flex-shrink-0">
-              <div className="w-full h-full bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
+              <div className="w-full h-full bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center">
                 <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
               </div>
             </div>
