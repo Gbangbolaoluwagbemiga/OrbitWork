@@ -109,11 +109,10 @@ export function ProjectDetailsStep({
             value={formData.projectDescription}
             onChange={(e) => onUpdate({ projectDescription: e.target.value })}
             placeholder="Describe the project requirements and deliverables..."
-            className={`min-h-[120px] ${
-              errors.projectDescription
+            className={`min-h-[120px] ${errors.projectDescription
                 ? "border-red-500 focus:border-red-500"
                 : ""
-            }`}
+              }`}
             required
             minLength={50}
           />
@@ -175,7 +174,7 @@ export function ProjectDetailsStep({
               <p className="text-xs text-muted-foreground mt-1">
                 {formData.isOpenJob
                   ? "Leave empty for open job applications"
-                  : "Valid Celo address required for direct escrow"}
+                  : "Valid Ethereum address required for direct escrow"}
               </p>
             )}
           </div>
@@ -190,7 +189,7 @@ export function ProjectDetailsStep({
               onChange={(e) => onUpdate({ useNativeToken: e.target.checked })}
               className="rounded"
             />
-            <Label htmlFor="useNativeToken">Use Native Token (CELO)</Label>
+            <Label htmlFor="useNativeToken">Use Native Token (ETH)</Label>
           </div>
 
           {!formData.useNativeToken && (
@@ -210,11 +209,10 @@ export function ProjectDetailsStep({
                 >
                   <SelectTrigger
                     id="tokenSelect"
-                    className={`flex-1 ${
-                      errors.tokenAddress
+                    className={`flex-1 ${errors.tokenAddress
                         ? "border-red-500 focus:border-red-500"
                         : ""
-                    }`}
+                      }`}
                   >
                     <SelectValue placeholder="Select a token..." />
                   </SelectTrigger>
