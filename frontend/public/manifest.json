@@ -1,7 +1,7 @@
 {
-  "name": "SecureFlow - Trustless Escrow on Celo",
-  "short_name": "SecureFlow",
-  "description": "Trustless payments with transparent milestones powered by Celo",
+  "name": "Orbitwork - Freelance on Uniswap v4",
+  "short_name": "Orbitwork",
+  "description": "Decentralized freelance marketplace powered by Uniswap v4 Hooks",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

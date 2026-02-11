@@ -12,36 +12,22 @@ export const projectId =
 // Create metadata
 // In development, use localhost; in production, use the production URL
 export const metadata = {
-  name: "SecureFlow",
-  description: "Secure Escrow Platform for Freelancers",
-  url: typeof window !== "undefined" 
-    ? window.location.origin 
+  name: "Orbitwork",
+  description: "Decentralized Freelance Platform Powered by Uniswap v4 Hooks",
+  url: typeof window !== "undefined"
+    ? window.location.origin
     : process.env.NEXT_PUBLIC_APP_URL || "https://secureflow.app",
   icons: ["/secureflow-logo.svg"],
 };
 
-// Define networks - Celo is first (primary network)
+// Define networks - Unichain Sepolia only (Uniswap v4 Hooks)
 const networks = [
   {
-    id: 42220,
-    name: "Celo",
-    currency: "CELO",
-    explorerUrl: "https://celoscan.io",
-    rpcUrl: "https://forno.celo.org",
-  },
-  {
-    id: 84532,
-    name: "Base Sepolia Testnet",
-    currency: "CELO",
-    explorerUrl: "https://sepolia.basescan.org",
-    rpcUrl: "https://sepolia.base.org",
-  },
-  {
-    id: 8453,
-    name: "Base",
-    currency: "CELO",
-    explorerUrl: "https://basescan.org",
-    rpcUrl: "https://mainnet.base.org",
+    id: 1301,
+    name: "Unichain Sepolia",
+    currency: "ETH",
+    explorerUrl: "https://sepolia.uniscan.xyz",
+    rpcUrl: "https://sepolia.unichain.org",
   },
 ];
 

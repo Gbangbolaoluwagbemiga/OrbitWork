@@ -1,20 +1,4 @@
-export const CELO_MAINNET = {
-  chainId: "0xA4EC", // 42220 in hex (Celo Mainnet)
-  chainName: "Celo",
-  nativeCurrency: {
-    name: "CELO",
-    symbol: "CELO",
-    decimals: 18,
-  },
-  rpcUrls: [
-    "https://forno.celo.org",
-    "https://rpc.ankr.com/celo",
-    "https://1rpc.io/celo",
-    "https://celo.publicnode.com",
-  ],
-  blockExplorerUrls: ["https://celoscan.io"],
-};
-
+// Unichain Sepolia - Primary network for Uniswap v4 Hooks
 export const UNICHAIN_SEPOLIA = {
   chainId: "0x515", // 1301 in hex
   chainName: "Unichain Sepolia",
@@ -26,6 +10,9 @@ export const UNICHAIN_SEPOLIA = {
   rpcUrls: ["https://sepolia.unichain.org"],
   blockExplorerUrls: ["https://sepolia.uniscan.xyz"],
 };
+
+// Default network export for the app
+export const DEFAULT_NETWORK = UNICHAIN_SEPOLIA;
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 

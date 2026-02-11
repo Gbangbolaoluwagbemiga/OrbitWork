@@ -7,7 +7,7 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import { CELO_MAINNET, CELO_TESTNET, CONTRACTS } from "@/lib/web3/config";
+import { UNICHAIN_SEPOLIA, DEFAULT_NETWORK, CONTRACTS } from "@/lib/web3/config";
 import type { WalletState } from "@/lib/web3/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAppKit, useAppKitAccount, useAppKitNetwork } from "@reown/appkit/react";
@@ -25,9 +25,7 @@ interface Web3ContextType {
   wallet: WalletState;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
-  switchToCelo: () => Promise<void>;
-  switchToCeloTestnet: () => Promise<void>;
-  addCeloNetwork: () => Promise<boolean>;
+  switchToUnichain: () => Promise<void>;
   getContract: (address: string, abi: any) => any;
   isOwner: boolean;
 }
@@ -48,25 +46,25 @@ export function Web3Provider({ children }: { children: ReactNode }) {
   const [isSwitchingNetwork, setIsSwitchingNetwork] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // Helper to check if Celo network exists in wallet
+  // Helper to check if Unichain network exists in wallet
   const checkCeloNetworkExists = async (): Promise<boolean> => {
     if (typeof window === "undefined" || !window.ethereum) return false;
-    
+
     try {
       const provider = window.ethereum as unknown as Eip1193Provider;
       const chainId = await provider.request({ method: "eth_chainId" });
       const chainIdNumber = Number.parseInt(chainId, 16);
-      const targetChainId = Number.parseInt(CELO_MAINNET.chainId, 16);
-      
+      const targetChainId = Number.parseInt(UNICHAIN_SEPOLIA.chainId, 16);
+
       // If already on Celo, network exists
       if (chainIdNumber === targetChainId) return true;
-      
+
       // Try to switch - if it fails with 4902, network doesn't exist
       // We catch the error to check the code without actually switching
       try {
         await provider.request({
           method: "wallet_switchEthereumChain",
-          params: [{ chainId: CELO_MAINNET.chainId }],
+          params: [{ chainId: UNICHAIN_SEPOLIA.chainId }],
         });
         // If switch succeeds, network exists (but we're now on it)
         return true;
@@ -90,7 +88,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       if (!provider && (window as any).ethereum?.providers) {
         provider = (window as any).ethereum.providers?.[0] || (window as any).ethereum;
       }
-      
+
       if (provider) {
         const balance = await provider.request({
           method: "eth_getBalance",
@@ -117,8 +115,8 @@ export function Web3Provider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (appKitConnected && appKitAddress) {
       const chainIdNumber = appKitChainId ? Number(appKitChainId) : null;
-      const targetChainId = Number.parseInt(CELO_MAINNET.chainId, 16);
-      
+      const targetChainId = Number.parseInt(UNICHAIN_SEPOLIA.chainId, 16);
+
       // Update wallet state from AppKit
       if (chainIdNumber === targetChainId) {
         // Fetch balance and update state
@@ -139,11 +137,11 @@ export function Web3Provider({ children }: { children: ReactNode }) {
           isConnected: false, // Mark as not connected if on wrong network
           balance: "0",
         });
-        
+
         // Show helpful message
         toast({
           title: "Wrong Network",
-          description: "Please switch to Celo Mainnet or add it if it's not in your wallet.",
+          description: "Please switch to Unichain Sepolia or add it if it's not in your wallet.",
           variant: "destructive",
         });
       }
@@ -225,7 +223,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
           method: "eth_chainId",
         });
         const chainIdNumber = Number.parseInt(chainId, 16);
-        const targetChainId = Number.parseInt(CELO_MAINNET.chainId, 16);
+        const targetChainId = Number.parseInt(UNICHAIN_SEPOLIA.chainId, 16);
 
         // If on wrong network, try to switch automatically (but only once per session)
         if (chainIdNumber !== targetChainId) {
@@ -313,18 +311,18 @@ export function Web3Provider({ children }: { children: ReactNode }) {
 
       const chainId = await provider.request({ method: "eth_chainId" });
       const chainIdNumber = Number.parseInt(chainId, 16);
-      const targetChainId = Number.parseInt(CELO_MAINNET.chainId, 16);
+      const targetChainId = Number.parseInt(UNICHAIN_SEPOLIA.chainId, 16);
 
       // Automatically switch to Celo if not already on it
       if (chainIdNumber !== targetChainId) {
         toast({
-          title: "Switching to Celo Mainnet",
+          title: "Switching to Unichain Sepolia",
           description: "Please approve the network switch or network addition",
         });
 
         try {
           // First, try to switch to Celo (this will automatically add it if missing)
-          await switchToCelo();
+          await switchToUnichain();
           // Wait for network switch to complete
           await new Promise((resolve) => setTimeout(resolve, 1500));
 
@@ -339,20 +337,20 @@ export function Web3Provider({ children }: { children: ReactNode }) {
             try {
               await provider.request({
                 method: "wallet_addEthereumChain",
-                params: [CELO_MAINNET],
+                params: [UNICHAIN_SEPOLIA],
               });
               toast({
-                title: "Celo network added",
+                title: "Unichain network added",
                 description:
-                  "Celo Mainnet has been added to your wallet. Please switch to it manually.",
+                  "Unichain Sepolia has been added to your wallet. Please switch to it manually.",
               });
             } catch (addError: any) {
-              console.error("Failed to add Celo network:", addError);
+              console.error("Failed to add Unichain network:", addError);
             }
 
             toast({
               title: "Network switch required",
-              description: "Please switch to Celo Mainnet to use this app",
+              description: "Please switch to Unichain Sepolia to use this app",
               variant: "destructive",
             });
             return;
@@ -360,7 +358,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
         } catch (switchError: any) {
           console.error("Failed to auto-switch network:", switchError);
 
-          // If switch failed, try to add Celo network directly
+          // If switch failed, try to add Unichain network directly
           if (
             switchError.code === 4902 ||
             switchError.message?.includes("not been added")
@@ -368,27 +366,27 @@ export function Web3Provider({ children }: { children: ReactNode }) {
             try {
               await provider.request({
                 method: "wallet_addEthereumChain",
-                params: [CELO_MAINNET],
+                params: [UNICHAIN_SEPOLIA],
               });
               toast({
-                title: "Celo network added",
+                title: "Unichain network added",
                 description:
-                  "Celo Mainnet has been added. Please switch to it in your wallet.",
+                  "Unichain Sepolia has been added. Please switch to it in your wallet.",
               });
             } catch (addError: any) {
-              console.error("Failed to add Celo network:", addError);
+              console.error("Failed to add Unichain network:", addError);
               toast({
                 title: "Network addition failed",
                 description:
                   addError.message ||
-                  "Failed to add Celo Mainnet. Please add it manually.",
+                  "Failed to add Unichain Sepolia. Please add it manually.",
                 variant: "destructive",
               });
             }
           } else {
             toast({
               title: "Network switch required",
-              description: "Please switch to Celo Mainnet manually to continue",
+              description: "Please switch to Unichain Sepolia manually to continue",
               variant: "destructive",
             });
           }
@@ -412,7 +410,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
 
       toast({
         title: "Wallet connected",
-        description: `Connected to Celo Mainnet - ${accounts[0].slice(
+        description: `Connected to Unichain Sepolia - ${accounts[0].slice(
           0,
           6
         )}...${accounts[0].slice(-4)}`,
@@ -420,7 +418,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       // Check if error is related to network not being available
       const errorMessage = error.message?.toLowerCase() || "";
-      const isNetworkError = 
+      const isNetworkError =
         error.code === 4902 ||
         errorMessage.includes("network") ||
         errorMessage.includes("chain") ||
@@ -430,7 +428,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       if (isNetworkError) {
         toast({
           title: "Celo Network Required",
-          description: "Please add Celo Mainnet to your wallet to continue. Click 'Add Celo Network' button.",
+          description: "Please add Unichain Sepolia to your wallet to continue. Click 'Add Celo Network' button.",
           variant: "destructive",
         });
       } else {
@@ -459,7 +457,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     });
   };
 
-  const switchToCelo = async () => {
+  const switchToUnichain = async () => {
     if (typeof window === "undefined" || !window.ethereum) return;
     const provider = window.ethereum as unknown as Eip1193Provider;
 
@@ -471,7 +469,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       method: "eth_chainId",
     });
     const currentChainIdNumber = Number.parseInt(currentChainId, 16);
-    const targetChainId = Number.parseInt(CELO_MAINNET.chainId, 16);
+    const targetChainId = Number.parseInt(UNICHAIN_SEPOLIA.chainId, 16);
 
     if (currentChainIdNumber === targetChainId) {
       toast({
@@ -486,7 +484,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     try {
       await provider.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: CELO_MAINNET.chainId }],
+        params: [{ chainId: UNICHAIN_SEPOLIA.chainId }],
       });
 
       toast({
@@ -498,7 +496,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
         try {
           await provider.request({
             method: "wallet_addEthereumChain",
-            params: [CELO_MAINNET],
+            params: [UNICHAIN_SEPOLIA],
           });
 
           toast({
@@ -543,12 +541,12 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     try {
       await provider.request({
         method: "wallet_addEthereumChain",
-        params: [CELO_MAINNET],
+        params: [UNICHAIN_SEPOLIA],
       });
 
       toast({
         title: "Celo Network Added! 🎉",
-        description: "Celo Mainnet has been added to your wallet. Please switch to it to continue.",
+        description: "Unichain Sepolia has been added to your wallet. Please switch to it to continue.",
       });
 
       // After adding, try to switch to it
@@ -556,7 +554,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
         try {
           await provider.request({
             method: "wallet_switchEthereumChain",
-            params: [{ chainId: CELO_MAINNET.chainId }],
+            params: [{ chainId: UNICHAIN_SEPOLIA.chainId }],
           });
         } catch (switchError) {
           // User might need to switch manually
@@ -566,18 +564,18 @@ export function Web3Provider({ children }: { children: ReactNode }) {
 
       return true;
     } catch (error: any) {
-      console.error("Failed to add Celo network:", error);
-      
+      console.error("Failed to add Unichain network:", error);
+
       if (error.code === 4001) {
         toast({
           title: "Request cancelled",
-          description: "You cancelled adding the Celo network",
+          description: "You cancelled adding the Unichain network",
           variant: "destructive",
         });
       } else {
         toast({
           title: "Failed to add network",
-          description: error.message || "Please add Celo Mainnet manually in your wallet settings",
+          description: error.message || "Please add Unichain Sepolia manually in your wallet settings",
           variant: "destructive",
         });
       }
@@ -585,7 +583,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     }
   };
 
-  const switchToCeloTestnet = async () => {
+  const switchToUnichainTestnet = async () => {
     if (typeof window === "undefined" || !window.ethereum) return;
     const provider = window.ethereum as unknown as Eip1193Provider;
 
@@ -597,7 +595,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       method: "eth_chainId",
     });
     const currentChainIdNumber = Number.parseInt(currentChainId, 16);
-    const targetChainId = Number.parseInt(CELO_TESTNET.chainId, 16);
+    const targetChainId = Number.parseInt(UNICHAIN_SEPOLIA.chainId, 16);
 
     if (currentChainIdNumber === targetChainId) {
       toast({
@@ -612,7 +610,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     try {
       await provider.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: CELO_TESTNET.chainId }],
+        params: [{ chainId: UNICHAIN_SEPOLIA.chainId }],
       });
 
       toast({
@@ -624,7 +622,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
         try {
           await provider.request({
             method: "wallet_addEthereumChain",
-            params: [CELO_TESTNET],
+            params: [UNICHAIN_SEPOLIA],
           });
 
           toast({
@@ -662,7 +660,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     let targetAddress = address;
     try {
       targetAddress = ethers.getAddress(address.toLowerCase());
-    } catch {}
+    } catch { }
 
     return {
       async call(method: string, ...args: any[]) {
@@ -689,7 +687,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
           }
 
           // Fallback to direct RPC connection
-          const provider = new ethers.JsonRpcProvider(CELO_MAINNET.rpcUrls[0]);
+          const provider = new ethers.JsonRpcProvider(UNICHAIN_SEPOLIA.rpcUrls[0]);
           const contract = new ethers.Contract(targetAddress, abi, provider);
 
           // Call the contract method directly
@@ -703,14 +701,14 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       async send(method: string, value: string = "0x0", ...args: any[]) {
         try {
           const provider = window.ethereum as unknown as Eip1193Provider;
-          
+
           // First, ensure we're on the correct network
           const currentChainId = await provider.request({
             method: "eth_chainId",
           });
 
-          // Check if we're on Celo Mainnet
-          const targetChainId = CELO_MAINNET.chainId;
+          // Check if we're on Unichain Sepolia
+          const targetChainId = UNICHAIN_SEPOLIA.chainId;
 
           // Convert to lowercase for case-insensitive comparison
           const currentChainIdLower = currentChainId.toLowerCase();
@@ -718,19 +716,19 @@ export function Web3Provider({ children }: { children: ReactNode }) {
 
           if (currentChainIdLower !== targetChainIdLower) {
             throw new Error(
-              `Wrong network! Please switch to Celo Mainnet (Chain ID: ${targetChainId}). Current: ${currentChainId}`
+              `Wrong network! Please switch to Unichain Sepolia (Chain ID: ${targetChainId}). Current: ${currentChainId}`
             );
           }
 
           // Additional check: verify we can connect to Celo RPC
           try {
             const celoProvider = new ethers.JsonRpcProvider(
-              CELO_MAINNET.rpcUrls[0]
+              UNICHAIN_SEPOLIA.rpcUrls[0]
             );
             await celoProvider.getBlockNumber(); // Test connection to Celo
           } catch (celoError) {
             throw new Error(
-              `Network validation failed. Please ensure you're connected to Celo Mainnet (Chain ID: 42220).`
+              `Network validation failed. Please ensure you're connected to Unichain Sepolia (Chain ID: 42220).`
             );
           }
 
@@ -855,8 +853,8 @@ export function Web3Provider({ children }: { children: ReactNode }) {
         wallet,
         connectWallet,
         disconnectWallet,
-        switchToCelo,
-        switchToCeloTestnet,
+        switchToUnichain,
+        switchToUnichainTestnet,
         addCeloNetwork,
         getContract,
         isOwner,

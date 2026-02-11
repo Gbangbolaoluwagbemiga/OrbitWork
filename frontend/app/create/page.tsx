@@ -24,7 +24,7 @@ interface Milestone {
 
 export default function CreateEscrowPage() {
   const router = useRouter();
-  const { wallet, getContract, switchToCelo } = useWeb3();
+  const { wallet, getContract, switchToUnichain } = useWeb3();
   const { executeTransaction, isSmartAccountReady } = useSmartAccount();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
@@ -1584,7 +1584,7 @@ export default function CreateEscrowPage() {
                   </p>
                 </div>
               </div>
-              <Button onClick={switchToCelo} variant="destructive" size="sm">
+              <Button onClick={switchToUnichain} variant="destructive" size="sm">
                 Switch to Somnia Dream Testnet
               </Button>
             </div>
