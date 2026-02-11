@@ -1327,35 +1327,35 @@ export default function AdminPage() {
           });
           break;
         case "withdraw":
-            try {
-              // Check if amount is valid
-              if (!withdrawData.amount || isNaN(Number(withdrawData.amount))) {
-                throw new Error("Invalid amount");
-              }
-              
-              // Convert amount to wei (assuming 18 decimals for simplicity, or we could fetch decimals)
-              const amountWei = ethers.parseUnits(withdrawData.amount, 18);
-              
-              await contract.send(
-                "emergencyWithdraw",
-                "no-value",
-                withdrawData.token,
-                amountWei
-              );
-              toast({
-                title: "Tokens withdrawn",
-                description: `Successfully withdrew ${withdrawData.amount} tokens`,
-              });
-              setWithdrawData({ token: CONTRACTS.MOCK_ERC20, amount: "" });
-            } catch (err: any) {
-              console.error("Withdraw error:", err);
-              toast({
-                title: "Withdraw failed",
-                description: err.message || "Failed to withdraw tokens",
-                variant: "destructive",
-              });
+          try {
+            // Check if amount is valid
+            if (!withdrawData.amount || isNaN(Number(withdrawData.amount))) {
+              throw new Error("Invalid amount");
             }
-            break;
+
+            // Convert amount to wei (assuming 18 decimals for simplicity, or we could fetch decimals)
+            const amountWei = ethers.parseUnits(withdrawData.amount, 18);
+
+            await contract.send(
+              "emergencyWithdraw",
+              "no-value",
+              withdrawData.token,
+              amountWei
+            );
+            toast({
+              title: "Tokens withdrawn",
+              description: `Successfully withdrew ${withdrawData.amount} tokens`,
+            });
+            setWithdrawData({ token: CONTRACTS.MOCK_ERC20, amount: "" });
+          } catch (err: any) {
+            console.error("Withdraw error:", err);
+            toast({
+              title: "Withdraw failed",
+              description: err.message || "Failed to withdraw tokens",
+              variant: "destructive",
+            });
+          }
+          break;
       }
 
       setDialogOpen(false);
@@ -1517,8 +1517,8 @@ export default function AdminPage() {
               {isOwner
                 ? "Full admin access - All functions available"
                 : isArbiter
-                ? "Arbiter access - Token management and dispute resolution"
-                : ""}
+                  ? "Arbiter access - Token management and dispute resolution"
+                  : ""}
             </p>
           </div>
           <Button
@@ -1666,9 +1666,8 @@ export default function AdminPage() {
 
           {/* Token Management & Arbiter Management - Side by Side */}
           <div
-            className={`grid grid-cols-1 ${
-              isOwner ? "lg:grid-cols-2" : "lg:grid-cols-1"
-            } gap-6 mt-6`}
+            className={`grid grid-cols-1 ${isOwner ? "lg:grid-cols-2" : "lg:grid-cols-1"
+              } gap-6 mt-6`}
           >
             {/* Token Management Section - Available to Owner and Arbiters */}
             <Card className="glass border-primary/20 p-6">
@@ -1715,11 +1714,11 @@ export default function AdminPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setTokenAddress(CONTRACTS.CUSD_MAINNET)}
+                    onClick={() => setTokenAddress("0xa04a2c6a219080C2E1Ff99B34FD79280661188AA")}
                     className="gap-2 w-full"
                   >
                     <Shield className="h-3 w-3" />
-                    Whitelist cUSD ({CONTRACTS.CUSD_MAINNET.slice(0, 10)}...)
+                    Whitelist Test Token (OWT)
                   </Button>
                 </div>
               </div>
@@ -1878,18 +1877,16 @@ export default function AdminPage() {
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div
-                className={`flex items-center justify-center w-12 h-12 rounded-full ${
-                  dialogContent.variant === "destructive"
+                className={`flex items-center justify-center w-12 h-12 rounded-full ${dialogContent.variant === "destructive"
                     ? "bg-destructive/10"
                     : "bg-primary/10"
-                }`}
+                  }`}
               >
                 <Icon
-                  className={`h-6 w-6 ${
-                    dialogContent.variant === "destructive"
+                  className={`h-6 w-6 ${dialogContent.variant === "destructive"
                       ? "text-destructive"
                       : "text-primary"
-                  }`}
+                    }`}
                 />
               </div>
               <DialogTitle className="text-2xl">
