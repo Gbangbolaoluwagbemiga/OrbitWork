@@ -1062,12 +1062,24 @@ export default function CreateEscrowPage() {
         }
 
         try {
+          console.log('💰 Approving tokens:', {
+            escrowContract: CONTRACTS.SECUREFLOW_ESCROW,
+            amount: totalAmountInWei,
+            amountFormatted: `${(Number(BigInt(totalAmountInWei)) / Number(BigInt(10 ** tokenDecimals))).toFixed(4)} ${tokenSymbol}`
+          });
+
+          // Approve 1% extra to handle any rounding issues
+          const approvalAmount = (BigInt(totalAmountInWei) * BigInt(101) / BigInt(100)).toString();
+          console.log('📝 Approval amount (with buffer):', approvalAmount);
+
           const approvalTx = await tokenContract.send(
             "approve",
             "no-value", // No native value for ERC20 approval
             CONTRACTS.SECUREFLOW_ESCROW,
-            totalAmountInWei
+            approvalAmount  // Approve slightly more than needed
           );
+
+          console.log('✅ Approval transaction hash:', approvalTx);
 
           toast({
             title: "Approval submitted",
@@ -1088,27 +1100,33 @@ export default function CreateEscrowPage() {
                 });
 
                 if (approvalReceipt) {
+                  console.log('📜 Approval receipt:', approvalReceipt);
                   break;
                 }
               }
-            } catch (error) { }
+            } catch (error) {
+              console.warn('Receipt check attempt', approvalAttempts, 'failed');
+            }
 
             await new Promise((resolve) => setTimeout(resolve, 2000));
             approvalAttempts++;
           }
 
           if (!approvalReceipt || approvalReceipt.status !== "0x1") {
+            console.error('❌ Approval failed or timed out:', approvalReceipt);
             throw new Error(
               "Token approval transaction failed or was rejected"
             );
           }
+
+          console.log('✅ Token approval confirmed!');
 
           toast({
             title: "Token approved",
             description: "Token approval confirmed. Creating escrow...",
           });
         } catch (approvalError: any) {
-          console.error("Approval error:", approvalError);
+          console.error("❌ Approval error:", approvalError);
           throw new Error(
             `Token approval failed: ${approvalError.message || "Please try again"
             }`
