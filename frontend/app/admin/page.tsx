@@ -1061,6 +1061,20 @@ export default function AdminPage() {
         description: "Token has been successfully whitelisted",
       });
 
+      // Save to localStorage
+      try {
+        const stored = localStorage.getItem('whitelistedTokens');
+        const tokens: string[] = stored ? JSON.parse(stored) : [];
+        const tokenLower = tokenAddress.toLowerCase();
+        if (!tokens.includes(tokenLower)) {
+          tokens.push(tokenLower);
+          localStorage.setItem('whitelistedTokens', JSON.stringify(tokens));
+          console.log('✅ Saved to localStorage. Total:', tokens.length);
+        }
+      } catch (e) {
+        console.warn('localStorage save failed:', e);
+      }
+
       setTokenAddress("");
       // Wait a moment for blockchain state to update
       await new Promise((resolve) => setTimeout(resolve, 2000));
