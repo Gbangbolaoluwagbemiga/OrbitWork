@@ -16,14 +16,14 @@ import { AppKit } from "@/lib/web3/reown-config";
 import { FarcasterSDKProvider } from "@/components/farcaster-sdk-provider";
 
 export const metadata: Metadata = {
-  title: "SecureFlow - Trustless Escrow on Celo",
-  description: "Trustless payments with transparent milestones powered by Celo",
-  generator: "SecureFlow",
+  title: "Orbitwork - Trustless Escrow on Unichain",
+  description: "Trustless payments with transparent milestones powered by Uniswap v4",
+  generator: "Orbitwork",
   manifest: "/manifest.json",
   icons: {
-    icon: "/secureflow-favicon.svg?v=2",
-    apple: "/secureflow-favicon.svg?v=2",
-    shortcut: "/secureflow-favicon.svg?v=2",
+    icon: "/orbitwork-favicon.svg?v=2",
+    apple: "/orbitwork-favicon.svg?v=2",
+    shortcut: "/orbitwork-favicon.svg?v=2",
   },
 };
 
@@ -37,10 +37,10 @@ export default function RootLayout({
       <head>
         <link
           rel="icon"
-          href="/secureflow-favicon.svg?v=2"
+          href="/orbitwork-favicon.svg?v=2"
           type="image/svg+xml"
         />
-        <link rel="apple-touch-icon" href="/secureflow-favicon.svg?v=2" />
+        <link rel="apple-touch-icon" href="/orbitwork-favicon.svg?v=2" />
         <link rel="manifest" href="/manifest.json" />
 
         {/* Farcaster Mini App Embed Metadata */}
@@ -48,13 +48,13 @@ export default function RootLayout({
           name="fc:miniapp"
           content='{
           "version":"next",
-          "imageUrl":"https://secure-flow-base.vercel.app/secureflow-favicon.svg?v=2",
+          "imageUrl":"https://orbitwork.vercel.app/orbitwork-favicon.svg?v=2",
           "button":{
-            "title":"Launch SecureFlow",
+            "title":"Launch Orbitwork",
             "action":{
               "type":"launch_miniapp",
-              "name":"SecureFlow",
-              "url":"https://secure-flow-base.vercel.app"
+              "name":"Orbitwork",
+              "url":"https://orbitwork.vercel.app"
             }
           }
         }'

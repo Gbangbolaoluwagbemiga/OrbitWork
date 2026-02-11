@@ -1,0 +1,40 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="sphereGradient" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(32 32) rotate(90) scale(16)">
+      <stop stop-color="#FF5A5F" />
+      <stop offset="1" stop-color="#C92A2A" />
+    </radialGradient>
+    <linearGradient id="ringGradient" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFA500" />
+      <stop offset="1" stop-color="#FF4500" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Orbit Ring -->
+  <ellipse cx="32" cy="32" rx="28" ry="12" stroke="url(#ringGradient)" stroke-width="2" transform="rotate(-15 32 32)" stroke-opacity="0.6" />
+  
+  <!-- Inner Orbit Ring -->
+  <ellipse cx="32" cy="32" rx="28" ry="12" stroke="url(#ringGradient)" stroke-width="2" transform="rotate(45 32 32)" stroke-opacity="0.8" />
+  
+  <!-- Central Sphere (Core) -->
+  <circle cx="32" cy="32" r="14" fill="url(#sphereGradient)">
+    <animate attributeName="r" values="14;15;14" dur="3s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- Orbiting Nodes -->
+  <!-- Node 1 -->
+  <circle cx="58" cy="32" r="4" fill="#FFA500" transform="rotate(-15 32 32)">
+    <animateTransform attributeName="transform" type="rotate" from="0 32 32" to="360 32 32" dur="10s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- Node 2 -->
+  <circle cx="4" cy="32" r="3" fill="#FF4500" transform="rotate(45 32 32)">
+    <animateTransform attributeName="transform" type="rotate" from="360 32 32" to="0 32 32" dur="8s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- Glow Effect -->
+  <circle cx="32" cy="32" r="20" stroke="#FF5A5F" stroke-width="0.5" stroke-opacity="0.3" stroke-dasharray="4 4">
+    <animateTransform attributeName="transform" type="rotate" from="0 32 32" to="360 32 32" dur="20s" repeatCount="indefinite" />
+  </circle>
+
+</svg>

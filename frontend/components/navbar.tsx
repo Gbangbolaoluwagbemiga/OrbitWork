@@ -73,8 +73,14 @@ export function Navbar() {
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 glass">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-2">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <Shield className="h-6 w-6 text-primary" />
+          <Link href="/" className="flex items-center gap-2 font-bold text-xl group">
+            <div className="relative h-7 w-7 transition-transform group-hover:scale-110 group-hover:rotate-12 duration-300">
+              <img
+                src="/orbitwork-logo.svg"
+                alt="Orbitwork Logo"
+                className="h-full w-full"
+              />
+            </div>
             <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Orbitwork
             </span>
@@ -85,8 +91,8 @@ export function Navbar() {
             <Link
               href="/"
               className={`text-sm font-medium transition-colors ${isActive("/")
-                  ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                  : "hover:text-primary"
+                ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                : "hover:text-primary"
                 }`}
             >
               Home
@@ -94,8 +100,8 @@ export function Navbar() {
             <Link
               href="/jobs"
               className={`text-sm font-medium transition-colors ${isActive("/jobs")
-                  ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                  : "hover:text-primary"
+                ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                : "hover:text-primary"
                 }`}
             >
               Browse Jobs
@@ -103,8 +109,8 @@ export function Navbar() {
             <Link
               href="/create"
               className={`text-sm font-medium transition-colors ${isActive("/create")
-                  ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                  : "hover:text-primary"
+                ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                : "hover:text-primary"
                 }`}
             >
               Create Escrow
@@ -112,8 +118,8 @@ export function Navbar() {
             <Link
               href="/dashboard"
               className={`text-sm font-medium transition-colors ${isActive("/dashboard")
-                  ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                  : "hover:text-primary"
+                ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                : "hover:text-primary"
                 }`}
             >
               Dashboard
@@ -123,8 +129,8 @@ export function Navbar() {
               <Link
                 href="/approvals"
                 className={`text-sm font-medium transition-colors ${isActive("/approvals")
-                    ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                    : "hover:text-primary"
+                  ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                  : "hover:text-primary"
                   }`}
               >
                 Approvals
@@ -134,8 +140,8 @@ export function Navbar() {
               <Link
                 href="/freelancer"
                 className={`text-sm font-medium transition-colors ${isActive("/freelancer")
-                    ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                    : "hover:text-primary"
+                  ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                  : "hover:text-primary"
                   }`}
               >
                 Freelancer
@@ -145,8 +151,8 @@ export function Navbar() {
               <Link
                 href="/admin"
                 className={`text-sm font-medium transition-colors ${isActive("/admin")
-                    ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                    : "hover:text-primary"
+                  ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                  : "hover:text-primary"
                   }`}
               >
                 Admin
@@ -202,8 +208,8 @@ export function Navbar() {
                 <Link
                   href="/"
                   className={`text-sm font-medium transition-colors py-2 ${isActive("/")
-                      ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                      : "hover:text-primary"
+                    ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                    : "hover:text-primary"
                     }`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -212,8 +218,8 @@ export function Navbar() {
                 <Link
                   href="/jobs"
                   className={`text-sm font-medium transition-colors py-2 ${isActive("/jobs")
-                      ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                      : "hover:text-primary"
+                    ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                    : "hover:text-primary"
                     }`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -222,8 +228,8 @@ export function Navbar() {
                 <Link
                   href="/create"
                   className={`text-sm font-medium transition-colors py-2 ${isActive("/create")
-                      ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                      : "hover:text-primary"
+                    ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                    : "hover:text-primary"
                     }`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -232,8 +238,8 @@ export function Navbar() {
                 <Link
                   href="/dashboard"
                   className={`text-sm font-medium transition-colors py-2 ${isActive("/dashboard")
-                      ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                      : "hover:text-primary"
+                    ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                    : "hover:text-primary"
                     }`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -243,8 +249,8 @@ export function Navbar() {
                   <Link
                     href="/approvals"
                     className={`text-sm font-medium transition-colors py-2 ${isActive("/approvals")
-                        ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                        : "hover:text-primary"
+                      ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                      : "hover:text-primary"
                       }`}
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -255,8 +261,8 @@ export function Navbar() {
                   <Link
                     href="/freelancer"
                     className={`text-sm font-medium transition-colors py-2 ${isActive("/freelancer")
-                        ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                        : "hover:text-primary"
+                      ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                      : "hover:text-primary"
                       }`}
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -267,8 +273,8 @@ export function Navbar() {
                   <Link
                     href="/admin"
                     className={`text-sm font-medium transition-colors py-2 ${isActive("/admin")
-                        ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
-                        : "hover:text-primary"
+                      ? "text-primary bg-primary/10 px-3 py-2 rounded-md"
+                      : "hover:text-primary"
                       }`}
                     onClick={() => setMobileMenuOpen(false)}
                   >
