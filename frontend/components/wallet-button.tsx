@@ -146,9 +146,8 @@ export function WalletButton() {
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={async () => {
-            const balance = await fetchBalance(wallet.address!);
-            setWallet(prev => ({ ...prev, balance }));
+          onClick={() => {
+            window.location.reload();
           }}
           className="cursor-pointer"
         >
