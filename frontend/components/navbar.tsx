@@ -76,7 +76,7 @@ export function Navbar() {
           <Link href="/" className="flex items-center gap-2 font-bold text-xl group">
             <div className="relative h-7 w-7 transition-transform group-hover:scale-110 group-hover:rotate-12 duration-300">
               <img
-                src="/orbitwork-logo.svg"
+                src="/orbitwork-logo.svg?v=2"
                 alt="Orbitwork Logo"
                 className="h-full w-full"
               />
