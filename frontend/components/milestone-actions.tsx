@@ -66,7 +66,16 @@ export function MilestoneActions({
   beneficiaryAddress,
 }: MilestoneActionsProps) {
   const { getContract, wallet } = useWeb3();
-  const engagementRewards = useEngagementRewards(ENGAGEMENT_REWARDS_ADDRESS);
+
+  // Try to use engagement rewards if wagmi provider exists, otherwise null
+  let engagementRewards = null;
+  try {
+    engagementRewards = useEngagementRewards(ENGAGEMENT_REWARDS_ADDRESS);
+  } catch (error) {
+    // Wagmi provider not available, engagement rewards will be disabled
+    console.warn('Engagement rewards disabled: wagmi provider not found');
+  }
+
   const { executeTransaction, executeBatchTransaction, isSmartAccountReady } =
     useSmartAccount();
   const { isDelegatedFunction } = useDelegation();
@@ -311,27 +320,27 @@ export function MilestoneActions({
                 // 1. Get current block for signature validity
                 const { ethers } = await import("ethers");
                 let currentBlock = 0;
-                
+
                 if (typeof window !== "undefined" && window.ethereum) {
-                   const provider = new ethers.BrowserProvider(window.ethereum as any);
-                   currentBlock = await provider.getBlockNumber();
+                  const provider = new ethers.BrowserProvider(window.ethereum as any);
+                  currentBlock = await provider.getBlockNumber();
                 } else {
-                   const provider = new ethers.JsonRpcProvider("https://forno.celo.org");
-                   currentBlock = await provider.getBlockNumber();
+                  const provider = new ethers.JsonRpcProvider("https://forno.celo.org");
+                  currentBlock = await provider.getBlockNumber();
                 }
 
                 validUntilBlock = Number(currentBlock) + 600; // Valid for 600 blocks (~50 mins)
 
                 // 2. Check if user is registered
                 const erContract = getContract(ENGAGEMENT_REWARDS_ADDRESS, ENGAGEMENT_REWARDS_ABI);
-                
+
                 if (erContract) {
                   const result = await erContract.call(
                     "userRegistrations",
                     CONTRACTS.SECUREFLOW_ESCROW,
                     wallet.address
                   );
-                  
+
                   // Result is [isRegistered, lastClaimTimestamp]
                   const isRegisteredInt = result[0];
 
