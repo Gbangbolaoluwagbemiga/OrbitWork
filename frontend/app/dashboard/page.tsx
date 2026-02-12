@@ -30,6 +30,7 @@ import { EscrowCard } from "@/components/dashboard/escrow-card";
 import { DashboardLoading } from "@/components/dashboard/dashboard-loading";
 import { RateFreelancer } from "@/components/rating-freelancer";
 import {
+  FilterSortControls,
   type SortOption,
 } from "@/components/dashboard/filter-sort-controls";
 import { YieldStatus } from "@/components/dashboard/yield-status";
