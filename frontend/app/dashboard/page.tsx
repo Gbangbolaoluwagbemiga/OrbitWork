@@ -1369,8 +1369,9 @@ export default function DashboardPage() {
         <YieldStatus />
         <DashboardStats escrows={escrows} />
 
-        {/* Productive Capital Stats */}
-        <div className="mt-8">
+        {/* Productive Capital Stats - Moved to separate analytics view */}
+        {/* Only relevant for freelancers who earn yield bonuses */}
+        {/* <div className="mt-8">
           <ProductiveCapitalStats
             totalEscrowed={escrows.reduce(
               (sum, e) => sum + Number.parseFloat(e.totalAmount) / 1e18,
@@ -1396,7 +1397,7 @@ export default function DashboardPage() {
               }, 0)}
             tokenSymbol="OWT"
           />
-        </div>
+        </div> */}
 
         {escrows.length === 0 ? (
           <Card className="glass border-muted p-12 text-center">

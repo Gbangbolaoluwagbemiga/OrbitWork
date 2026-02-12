@@ -274,7 +274,8 @@ export function EscrowCard({
                 )}
 
                 {/* Productive Escrow: Yield Tracker */}
-                {escrow.status !== "completed" && (
+                {/* Only show to freelancers (beneficiaries) - they earn the yield bonus */}
+                {escrow.status !== "completed" && !escrow.isClient && (
                   <YieldTracker
                     escrowId={escrow.id}
                     totalAmount={Number.parseFloat(escrow.totalAmount) / 1e18}
