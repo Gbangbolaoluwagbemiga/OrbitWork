@@ -1366,7 +1366,7 @@ export default function DashboardPage() {
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
         />
-        <YieldStatus />
+        {/* <YieldStatus /> - Removed to reduce clutter */}
         <DashboardStats escrows={escrows} />
 
         {/* Productive Capital Stats - Moved to separate analytics view */}
