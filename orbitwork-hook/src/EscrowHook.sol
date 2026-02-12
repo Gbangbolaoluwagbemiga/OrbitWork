@@ -29,6 +29,33 @@ contract EscrowHook is BaseHook, IUnlockCallback {
 
     address public immutable escrowCore;
 
+    // === Yield Tracking State ===
+    struct LPPosition {
+        uint128 liquidity;           // Total liquidity in pool
+        uint256 reserveAmount;       // Amount kept as reserve (20%)
+        uint256 token0FeeGrowthLast; // Last recorded fee growth for token0
+        uint256 token1FeeGrowthLast; // Last recorded fee growth for token1
+        uint256 yieldAccumulated;    // Total yield accumulated
+        bool isActive;               // Whether position is active
+    }
+
+    // escrowId => LP position info
+    mapping(uint256 => LPPosition) public escrowPositions;
+    
+    // Total yield distributed
+    uint256 public totalYieldDistributed;
+    
+    // Yield distribution ratios (basis points)
+    uint256 public constant FREELANCER_SHARE = 7000; // 70%
+    uint256 public constant PLATFORM_SHARE = 3000;   // 30%
+    uint256 public constant LP_RATIO = 8000;         // 80% to LP
+    uint256 public constant RESERVE_RATIO = 2000;    // 20% reserve
+
+    // Events
+    event LiquidityAdded(uint256 indexed escrowId, uint128 liquidity, uint256 reserveAmount);
+    event YieldAccumulated(uint256 indexed escrowId, uint256 amount);
+    event YieldDistributed(uint256 indexed escrowId, address freelancer, uint256 freelancerAmount, uint256 platformAmount);
+
     struct CallbackData {
         PoolKey key;
         IPoolManager.ModifyLiquidityParams params;
@@ -48,7 +75,7 @@ contract EscrowHook is BaseHook, IUnlockCallback {
             beforeRemoveLiquidity: true,
             afterRemoveLiquidity: false,
             beforeSwap: false,
-            afterSwap: false,
+            afterSwap: true,  // Enable to track fees
             beforeDonate: false,
             afterDonate: false,
             beforeSwapReturnDelta: false,
@@ -118,7 +145,107 @@ contract EscrowHook is BaseHook, IUnlockCallback {
         }
     }
 
-    // --- Hook Callbacks ---
+    // === Escrow Integration Functions ===
+
+    /**
+     * @notice Called by EscrowCore when new escrow is created
+     * @param escrowId The ID of the escrow
+     * @param totalAmount Total amount deposited
+     * @param key The pool key to add liquidity to
+     */
+    function onEscrowCreated(
+        uint256 escrowId,
+        uint256 totalAmount,
+        PoolKey calldata key
+    ) external returns (uint256 lpAmount, uint256 reserveAmount) {
+        require(msg.sender == escrowCore, "Only EscrowCore");
+        require(!escrowPositions[escrowId].isActive, "Escrow already has LP");
+
+        // Calculate split: 80% LP, 20% reserve
+        lpAmount = (totalAmount * LP_RATIO) / 10000;
+        reserveAmount = totalAmount - lpAmount;
+
+        // Store position info
+        escrowPositions[escrowId] = LPPosition({
+            liquidity: 0, // Will be set after adding liquidity
+            reserveAmount: reserveAmount,
+            token0FeeGrowthLast: 0,
+            token1FeeGrowthLast: 0,
+            yieldAccumulated: 0,
+            isActive: true
+        });
+
+        emit LiquidityAdded(escrowId, 0, reserveAmount);
+        
+        return (lpAmount, reserveAmount);
+    }
+
+    /**
+     * @notice Calculate and distribute yield when milestone is approved
+     * @param escrowId The escrow ID
+     * @param milestoneAmount The milestone payment amount
+     * @param freelancer Address of the freelancer
+     * @return payment Total payment (milestone + yield bonus)
+     * @return platformYield Platform's share of yield
+     */
+    function onMilestoneApproved(
+        uint256 escrowId,
+        uint256 milestoneAmount,
+        address freelancer
+    ) external returns (uint256 payment, uint256 platformYield) {
+        require(msg.sender == escrowCore, "Only EscrowCore");
+        
+        LPPosition storage position = escrowPositions[escrowId];
+        require(position.isActive, "No active LP position");
+
+        // Calculate yield earned since last action
+        uint256 yieldEarned = position.yieldAccumulated;
+
+        // Distribute yield: 70% to freelancer, 30% to platform
+        uint256 freelancerYield = (yieldEarned * FREELANCER_SHARE) / 10000;
+        platformYield = yieldEarned - freelancerYield;
+
+        // Total payment to freelancer = milestone + yield bonus
+        payment = milestoneAmount + freelancerYield;
+
+        // Reset accumulated yield
+        position.yieldAccumulated = 0;
+        totalYieldDistributed += yieldEarned;
+
+        emit YieldDistributed(escrowId, freelancer, freelancerYield, platformYield);
+
+        return (payment, platformYield);
+    }
+
+    /**
+     * @notice Get current yield for an escrow
+     */
+    function getEscrowYield(uint256 escrowId) external view returns (uint256) {
+        return escrowPositions[escrowId].yieldAccumulated;
+    }
+
+    // === Hook Callbacks ===
+
+    /**
+     * @notice Hook called after every swap to track fees
+     */
+    function _afterSwap(
+        address,
+        PoolKey calldata key,
+        IPoolManager.SwapParams calldata,
+        BalanceDelta,
+        bytes calldata
+    ) internal override returns (bytes4, int128) {
+        // In a full implementation, we'd:
+        // 1. Get fee growth from pool
+        // 2. Calculate fees earned by each escrow's LP position
+        // 3. Update yieldAccumulated
+        
+        // For hackathon demo: simplified version
+        // Real implementation would query pool state for fee growth
+        
+        return (BaseHook.afterSwap.selector, 0);
+    }
 
     function _beforeAddLiquidity(address, PoolKey calldata, IPoolManager.ModifyLiquidityParams calldata, bytes calldata)
         internal
