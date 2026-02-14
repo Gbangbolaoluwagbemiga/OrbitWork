@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { useWeb3 } from "@/contexts/web3-context";
 import { useToast } from "@/hooks/use-toast";
 import { CONTRACTS } from "@/lib/web3/config";
-import { ORBIT_WORK_ABI } from "@/lib/web3/abis";
+import { ORBIT_WORK_ABI, ERC20_ABI } from "@/lib/web3/abis";
 import { ORBITWORK_RATINGS_ABI } from "@/lib/web3/ratings-abi";
 import {
   useNotifications,
@@ -143,7 +143,8 @@ export default function DashboardPage() {
   const getDisputeResolutionAmounts = async (
     contract: any,
     escrowId: number,
-    milestoneIndex: number
+    milestoneIndex: number,
+    tokenDecimals: number = 18
   ): Promise<{ freelancerAmount: number; clientAmount: number } | null> => {
     try {
       const { ethers } = await import("ethers");
@@ -322,8 +323,8 @@ export default function DashboardPage() {
 
             if (beneficiaryAmountRaw !== null && refundAmountRaw !== null) {
               // Convert to numbers (handle BigInt, string, or number)
-              const freelancerAmount = Number(beneficiaryAmountRaw) / 1e18;
-              const clientAmount = Number(refundAmountRaw) / 1e18;
+              const freelancerAmount = Number(beneficiaryAmountRaw) / Math.pow(10, tokenDecimals);
+              const clientAmount = Number(refundAmountRaw) / Math.pow(10, tokenDecimals);
 
               // Return amounts if valid
               if (
@@ -635,6 +636,9 @@ export default function DashboardPage() {
       const escrowCount = Number(totalEscrows);
 
       const userEscrows: Escrow[] = [];
+      const decimalCache: Record<string, number> = {
+        "0x0000000000000000000000000000000000000000": 18 // Native token
+      };
 
       // Fetch user's escrows from the contract
       // Check if there are any escrows created yet (nextEscrowId > 1 means at least one escrow exists)
@@ -679,13 +683,30 @@ export default function DashboardPage() {
               // For resolved milestones, fetch exact fund split amounts from events
               // We can optimize this later if needed, currently it runs sequentially per escrow
               // but parallel escrows logic would require significant refactoring of fetchMilestones
+              // Fetch decimals for the token if not in cache
+              const tokenAddr = escrowSummary[7];
+              if (decimalCache[tokenAddr] === undefined) {
+                try {
+                  const tokenContract = getContract(tokenAddr, ERC20_ABI);
+                  const decimals = await tokenContract.call("decimals");
+                  decimalCache[tokenAddr] = Number(decimals) || 18;
+                } catch (e) {
+                  decimalCache[tokenAddr] = 18; // Default fallback
+                }
+              }
+              const tokenDecimals = decimalCache[tokenAddr] || 18;
+
+              // For resolved milestones, fetch exact fund split amounts from events
+              // We can optimize this later if needed, currently it runs sequentially per escrow
+              // but parallel escrows logic would require significant refactoring of fetchMilestones
               for (let j = 0; j < milestones.length; j++) {
                 if (milestones[j].status === "resolved") {
                   try {
                     const amounts = await getDisputeResolutionAmounts(
                       contract,
                       id,
-                      j
+                      j,
+                      tokenDecimals
                     );
                     if (
                       amounts &&
@@ -734,6 +755,7 @@ export default function DashboardPage() {
                 token: escrowSummary[7], // token
                 totalAmount: escrowSummary[4].toString(), // totalAmount
                 releasedAmount: escrowSummary[5].toString(), // paidAmount
+                tokenDecimals: tokenDecimals,
                 status: finalStatus,
                 createdAt: Number(escrowSummary[10]) * 1000, // createdAt (convert to milliseconds)
                 duration: Number(escrowSummary[8]) - Number(escrowSummary[10]), // deadline - createdAt (in seconds)

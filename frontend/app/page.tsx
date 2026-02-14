@@ -7,7 +7,7 @@ import { ArrowRight, Shield, CheckCircle2, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useWeb3 } from "@/contexts/web3-context";
 import { CONTRACTS } from "@/lib/web3/config";
-import { ORBIT_WORK_ABI } from "@/lib/web3/abis";
+import { ORBIT_WORK_ABI, ERC20_ABI } from "@/lib/web3/abis";
 import { motion } from "framer-motion";
 
 export default function HomePage() {
@@ -38,7 +38,10 @@ export default function HomePage() {
 
       let activeEscrows = 0;
       let completedEscrows = 0;
-      let totalVolume = 0;
+      let totalVolumeValue = 0; // Use a clearer name to avoid confusion with the state string
+      const decimalCache: Record<string, number> = {
+        "0x0000000000000000000000000000000000000000": 18 // Native token
+      };
 
       // Helper function to check if an escrow is terminated
       const isEscrowTerminated = async (escrowId: number) => {
@@ -64,23 +67,41 @@ export default function HomePage() {
         for (let i = 1; i < escrowCount; i++) {
           try {
             const escrowSummary = await contract.call("getEscrowSummary", i);
+            if (!escrowSummary || escrowSummary.length < 8) continue;
+
+            const tokenAddr = escrowSummary[7];
             const status = Number(escrowSummary[3]); // status is at index 3
-            const totalAmount = Number(escrowSummary[4]); // totalAmount is at index 4
+            const totalAmount = escrowSummary[4].toString(); // totalAmount is at index 4
 
-            // Add to total volume (convert from Wei to tokens)
-            totalVolume += totalAmount / 1e18;
+            // Fetch decimals if not in cache
+            if (decimalCache[tokenAddr] === undefined) {
+              try {
+                const tokenContract = getContract(tokenAddr, ERC20_ABI);
+                const decimals = await tokenContract.call("decimals");
+                decimalCache[tokenAddr] = Number(decimals) || 18;
+              } catch (e) {
+                decimalCache[tokenAddr] = 18;
+              }
+            }
+            const tokenDecimals = decimalCache[tokenAddr] || 18;
 
-            if (status === 1) {
-              // Check if this active escrow is terminated due to disputed milestones
+            // Add to total volume (incl. pending and active)
+            if (status === 0 || status === 1) {
+              totalVolumeValue += Number(totalAmount) / Math.pow(10, tokenDecimals);
+            } else if (status === 2) {
+              // For completed, we also count its volume toward "secured" (or historical)
+              totalVolumeValue += Number(totalAmount) / Math.pow(10, tokenDecimals);
+            }
+
+            if (status === 0 || status === 1) {
+              // Check if terminated
               const isTerminated = await isEscrowTerminated(i);
               if (!isTerminated) {
                 activeEscrows++;
               } else {
-                // Terminated projects should be counted as completed
                 completedEscrows++;
               }
             } else if (status === 2) {
-              // Completed
               completedEscrows++;
             }
           } catch (error) {
@@ -92,7 +113,7 @@ export default function HomePage() {
 
       setStats({
         activeEscrows,
-        totalVolume: totalVolume.toFixed(2),
+        totalVolume: totalVolumeValue.toFixed(2),
         completedEscrows,
       });
     } catch (error) {

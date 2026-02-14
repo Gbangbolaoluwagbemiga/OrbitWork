@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { useWeb3 } from "@/contexts/web3-context";
 import { useToast } from "@/hooks/use-toast";
 import { CONTRACTS } from "@/lib/web3/config";
-import { ORBIT_WORK_ABI } from "@/lib/web3/abis";
+import { ORBIT_WORK_ABI, ERC20_ABI } from "@/lib/web3/abis";
 import { ORBITWORK_RATINGS_ABI } from "@/lib/web3/ratings-abi";
 import { ethers } from "ethers";
 import {
@@ -231,6 +231,9 @@ export default function JobsPage() {
           ratings: getContract(CONTRACTS.ORBITWORK_RATINGS, ORBITWORK_RATINGS_ABI)
         };
         const newClientRatings: Record<string, { average: number; count: number }> = {};
+        const decimalCache: Record<string, number> = {
+          "0x0000000000000000000000000000000000000000": 18 // Native token
+        };
 
         for (let i = 1; i < escrowCount; i++) {
           try {
@@ -328,6 +331,18 @@ export default function JobsPage() {
                 applicationCount = 0;
               }
 
+              // Fetch decimals for the token if not in cache
+              const tokenAddr = escrowSummary[7];
+              if (decimalCache[tokenAddr] === undefined) {
+                try {
+                  const tokenContract = getContract(tokenAddr, ERC20_ABI);
+                  const decimals = await tokenContract.call("decimals");
+                  decimalCache[tokenAddr] = Number(decimals) || 18;
+                } catch (e) {
+                  decimalCache[tokenAddr] = 18; // Default fallback
+                }
+              }
+
               // Convert contract data to our Escrow type
               const job: Escrow = {
                 id: i.toString(),
@@ -336,6 +351,7 @@ export default function JobsPage() {
                 token: escrowSummary[7], // token
                 totalAmount: escrowSummary[4].toString(), // totalAmount
                 releasedAmount: escrowSummary[5].toString(), // paidAmount
+                tokenDecimals: decimalCache[tokenAddr] || 18,
                 status: getStatusFromNumber(Number(escrowSummary[3])), // status
                 createdAt: Number(escrowSummary[10]) * 1000, // createdAt (convert to milliseconds)
                 duration: Math.max(

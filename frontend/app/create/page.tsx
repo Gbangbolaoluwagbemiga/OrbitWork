@@ -1774,6 +1774,7 @@ export default function CreateEscrowPage() {
                   isSubmitting={isSubmitting}
                   isContractPaused={isContractPaused}
                   isOnCorrectNetwork={isOnCorrectNetwork}
+                  platformFeeBP={platformFeeBP}
                 />
               </motion.div>
             )}

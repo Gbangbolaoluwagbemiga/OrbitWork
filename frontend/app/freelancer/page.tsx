@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useWeb3 } from "@/contexts/web3-context";
 import { CONTRACTS } from "@/lib/web3/config";
-import { ORBIT_WORK_ABI } from "@/lib/web3/abis";
+import { ORBIT_WORK_ABI, ERC20_ABI } from "@/lib/web3/abis";
 import { ORBITWORK_RATINGS_ABI } from "@/lib/web3/ratings-abi";
 import {
   useNotifications,
@@ -71,6 +71,7 @@ interface Escrow {
   projectDescription: string;
   isOpenJob: boolean;
   milestoneCount: number;
+  tokenDecimals?: number;
 }
 
 interface Milestone {
@@ -191,6 +192,9 @@ export default function FreelancerPage() {
       const escrowCount = Number(totalEscrows);
 
       const freelancerEscrows: Escrow[] = [];
+      const decimalCache: Record<string, number> = {
+        "0x0000000000000000000000000000000000000000": 18 // Native token
+      };
 
       // Fetch escrows where current user is the beneficiary
       if (escrowCount > 1) {
@@ -262,6 +266,17 @@ export default function FreelancerPage() {
               } else if (normalizedStatus === "inprogress") {
                 normalizedStatus = "active";
               }
+              const tokenAddr = escrowSummary[7];
+              if (decimalCache[tokenAddr] === undefined) {
+                try {
+                  const tokenContract = getContract(tokenAddr, ERC20_ABI);
+                  const decimals = await tokenContract.call("decimals");
+                  decimalCache[tokenAddr] = Number(decimals) || 18;
+                } catch (e) {
+                  decimalCache[tokenAddr] = 18; // Default fallback
+                }
+              }
+              const tokenDecimals = decimalCache[tokenAddr] || 18;
 
               const escrow: Escrow = {
                 id: i.toString(),
@@ -270,6 +285,7 @@ export default function FreelancerPage() {
                 token: escrowSummary[7], // token
                 totalAmount: escrowSummary[4].toString(), // totalAmount
                 releasedAmount: escrowSummary[5].toString(), // paidAmount
+                tokenDecimals: tokenDecimals,
                 status: normalizedStatus as
                   | "pending"
                   | "active"
@@ -1139,9 +1155,9 @@ export default function FreelancerPage() {
     }
   };
 
-  const formatAmount = (amount: string) => {
+  const formatAmount = (amount: string, decimals: number = 18) => {
     try {
-      const num = Number(amount) / 1e18;
+      const num = Number(amount) / Math.pow(10, decimals);
       if (isNaN(num) || num < 0) {
         return "0.00";
       }
@@ -1404,7 +1420,7 @@ export default function FreelancerPage() {
                                 Total Value
                               </p>
                               <p className="font-semibold text-green-700 dark:text-green-400">
-                                {formatAmount(escrow.totalAmount)} tokens
+                                {formatAmount(escrow.totalAmount, escrow.tokenDecimals)} tokens
                               </p>
                             </div>
                           </div>
@@ -1415,7 +1431,7 @@ export default function FreelancerPage() {
                                 Released
                               </p>
                               <p className="font-semibold text-blue-700 dark:text-blue-400">
-                                {formatAmount(escrow.releasedAmount)} tokens
+                                {formatAmount(escrow.releasedAmount, escrow.tokenDecimals)} tokens
                               </p>
                             </div>
                           </div>
@@ -1523,6 +1539,8 @@ export default function FreelancerPage() {
                             {escrow.milestoneCount || escrow.milestones.length}{" "}
                             total)
                           </h4>
+
+                          {/* Debug: token decimals: {escrow.tokenDecimals} */}
 
                           {/* Milestone Progress */}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -1653,7 +1671,7 @@ export default function FreelancerPage() {
                                     )}
 
                                   <div className="text-sm font-semibold text-green-600 dark:text-green-400">
-                                    {formatAmount(milestone.amount)} tokens
+                                    {formatAmount(milestone.amount, escrow.tokenDecimals)} tokens
                                   </div>
 
                                   {/* Show rejected status if milestone is rejected */}
