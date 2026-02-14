@@ -11,17 +11,18 @@ interface DashboardStatsProps {
     milestones: Array<{
       status: string;
     }>;
+    tokenDecimals?: number;
   }>;
 }
 
 export function DashboardStats({ escrows }: DashboardStatsProps) {
   const totalValue = escrows.reduce(
-    (sum, escrow) => sum + Number.parseFloat(escrow.totalAmount) / 1e18,
+    (sum, escrow) => sum + Number.parseFloat(escrow.totalAmount) / Math.pow(10, escrow.tokenDecimals || 18),
     0
   );
 
   const totalReleased = escrows.reduce(
-    (sum, escrow) => sum + Number.parseFloat(escrow.releasedAmount) / 1e18,
+    (sum, escrow) => sum + Number.parseFloat(escrow.releasedAmount) / Math.pow(10, escrow.tokenDecimals || 18),
     0
   );
 

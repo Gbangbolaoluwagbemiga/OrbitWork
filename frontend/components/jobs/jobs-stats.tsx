@@ -7,13 +7,14 @@ interface JobsStatsProps {
   jobs: Array<{
     totalAmount: string;
     duration: number;
+    tokenDecimals?: number;
   }>;
   ongoingProjectsCount?: number;
 }
 
 export function JobsStats({ jobs, ongoingProjectsCount = 0 }: JobsStatsProps) {
   const totalValue = jobs.reduce(
-    (sum, job) => sum + Number.parseFloat(job.totalAmount),
+    (sum, job) => sum + (Number.parseFloat(job.totalAmount) / Math.pow(10, job.tokenDecimals || 18)),
     0,
   );
   const avgDuration =
@@ -40,7 +41,7 @@ export function JobsStats({ jobs, ongoingProjectsCount = 0 }: JobsStatsProps) {
           <div className="min-w-0 flex-1">
             <p className="text-sm text-muted-foreground mb-1">Total Value</p>
             <p className="text-2xl md:text-3xl font-bold break-all">
-              {(totalValue / 1e18).toFixed(2)} tokens
+              {totalValue.toFixed(2)} tokens
             </p>
           </div>
           <DollarSign className="h-8 w-8 md:h-10 md:w-10 text-accent opacity-50 flex-shrink-0" />

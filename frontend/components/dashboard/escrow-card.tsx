@@ -137,7 +137,7 @@ export function EscrowCard({
                 <div className="flex items-center gap-1">
                   <DollarSign className="h-4 w-4" />
                   <span>
-                    {(Number.parseFloat(escrow.totalAmount) / 1e18).toFixed(2)}{" "}
+                    {(Number.parseFloat(escrow.totalAmount) / Math.pow(10, escrow.tokenDecimals || 18)).toFixed(2)}{" "}
                     tokens
                   </span>
                 </div>
@@ -227,14 +227,14 @@ export function EscrowCard({
               <div>
                 <span className="text-gray-600">Total Amount:</span>
                 <div className="font-semibold">
-                  {(Number.parseFloat(escrow.totalAmount) / 1e18).toFixed(2)}{" "}
+                  {(Number.parseFloat(escrow.totalAmount) / Math.pow(10, escrow.tokenDecimals || 18)).toFixed(2)}{" "}
                   tokens
                 </div>
               </div>
               <div>
                 <span className="text-gray-600">Released:</span>
                 <div className="font-semibold">
-                  {(Number.parseFloat(escrow.releasedAmount) / 1e18).toFixed(2)}{" "}
+                  {(Number.parseFloat(escrow.releasedAmount) / Math.pow(10, escrow.tokenDecimals || 18)).toFixed(2)}{" "}
                   tokens
                 </div>
               </div>
@@ -278,7 +278,7 @@ export function EscrowCard({
                 {escrow.status !== "completed" && !escrow.isClient && (
                   <YieldTracker
                     escrowId={escrow.id}
-                    totalAmount={Number.parseFloat(escrow.totalAmount) / 1e18}
+                    totalAmount={Number.parseFloat(escrow.totalAmount) / Math.pow(10, escrow.tokenDecimals || 18)}
                     tokenSymbol="OWT"
                     daysActive={Math.max(0, Math.floor(
                       (Date.now() / 1000 - escrow.createdAt) / 86400
@@ -298,7 +298,7 @@ export function EscrowCard({
                           {milestone.description}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {(Number.parseFloat(milestone.amount) / 1e18).toFixed(
+                          {(Number.parseFloat(milestone.amount) / Math.pow(10, escrow.tokenDecimals || 18)).toFixed(
                             2
                           )}{" "}
                           tokens

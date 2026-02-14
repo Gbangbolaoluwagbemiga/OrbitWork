@@ -18,6 +18,7 @@ interface FreelancerStatsProps {
     milestones: Array<{
       status: string;
     }>;
+    tokenDecimals?: number;
   }>;
   freelancerRating?: {
     averageRating: number;
@@ -32,12 +33,12 @@ export function FreelancerStats({
   badgeTier,
 }: FreelancerStatsProps) {
   const totalEarnings = escrows.reduce(
-    (sum, escrow) => sum + Number.parseFloat(escrow.releasedAmount),
+    (sum, escrow) => sum + (Number.parseFloat(escrow.releasedAmount) / Math.pow(10, escrow.tokenDecimals || 18)),
     0
   );
 
   const totalValue = escrows.reduce(
-    (sum, escrow) => sum + Number.parseFloat(escrow.totalAmount),
+    (sum, escrow) => sum + (Number.parseFloat(escrow.totalAmount) / Math.pow(10, escrow.tokenDecimals || 18)),
     0
   );
 
@@ -125,7 +126,7 @@ export function FreelancerStats({
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {(totalEarnings / 1e18).toFixed(2)}
+            {totalEarnings.toFixed(2)}
           </div>
           <p className="text-xs text-muted-foreground">tokens earned</p>
         </CardContent>
@@ -138,7 +139,7 @@ export function FreelancerStats({
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {(totalValue / 1e18).toFixed(2)}
+            {totalValue.toFixed(2)}
           </div>
           <p className="text-xs text-muted-foreground">tokens in projects</p>
         </CardContent>
@@ -198,8 +199,8 @@ export function FreelancerStats({
             {badgeTier === 2
               ? "20+ projects"
               : badgeTier === 1
-              ? "5-19 projects"
-              : "0-4 projects"}
+                ? "5-19 projects"
+                : "0-4 projects"}
           </p>
         </CardContent>
       </Card>
