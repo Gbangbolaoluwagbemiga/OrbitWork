@@ -13,7 +13,7 @@ const ESCROW_HOOK_ABI = [
 
 // Unichain Sepolia Testnet
 const RPC_URL = "https://sepolia.unichain.org"; // From config.ts
-const HOOK_ADDRESS = "0x99D6b6F5b42b0220EB265026828c79d47e774a40";
+const HOOK_ADDRESS = "0xdc524fa00c57f2914036be24746a6ac4432fca40";
 // From config.ts
 
 async function checkYield() {

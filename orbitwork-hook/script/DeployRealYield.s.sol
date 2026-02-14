@@ -44,14 +44,40 @@ contract DeployRealYield is Script {
         console.log("OrbitWork deployed at:", address(orbitWork));
 
         // 3. Deploy EscrowHook
-        uint160 flags = uint160(
-            Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG
-        );
-        
+        // 3. Deploy EscrowHook
+        // NOTE: Local Hooks.sol uses low bits (old version), but Unichain Sepolia PoolManager uses HIGH bits (new version).
+        // We must manually define flags for high bits:
+        // BeforeAddLiquidity: 157
+        // BeforeRemoveLiquidity: 155
+        // AfterSwap: 152
+        // 3. Deploy EscrowHook
+        // Manual Mining for 0x29 prefix (High bits 157, 155, 152)
         bytes memory constructorArgs = abi.encode(POOL_MANAGER, address(orbitWork));
-        (address hookAddress, bytes32 salt) =
-            HookMiner.find(CREATE2_FACTORY, flags, type(EscrowHook).creationCode, constructorArgs);
+        bytes memory initCode = abi.encodePacked(type(EscrowHook).creationCode, constructorArgs);
+        bytes32 initCodeHash = keccak256(initCode);
+        
+        address hookAddress;
+        bytes32 salt;
+        bool found = false;
+        
+        console.log("Mining for 0x29 prefix...");
+        for (uint256 i = 0; i < 30000; i++) {
+            salt = bytes32(i);
+            // computeCreate2Address(salt, initCodeHash, deployer)
+            hookAddress = vm.computeCreate2Address(salt, initCodeHash, CREATE2_FACTORY);
             
+            // Check for 0x24... wait, 0x29 (0010 1001)
+            // 2 = 0010 (159=0, 158=0, 157=1, 156=0) -> BeforeAdd (157). Correct.
+            // 9 = 1001 (155=1, 154=0, 153=0, 152=1) -> BeforeRemove (155), AfterSwap (152). Correct.
+            if (bytes20(hookAddress)[0] == 0x29) {
+                found = true;
+                break;
+            }
+        }
+        require(found, "Failed to mine 0x29 address");
+        console.log("Mined Address:", hookAddress);
+        console.log("Salt:", vm.toString(salt));
+
         EscrowHook escrowHook = new EscrowHook{salt: salt}(POOL_MANAGER, address(orbitWork));
         require(address(escrowHook) == hookAddress, "Hook Address Mismatch");
         console.log("EscrowHook deployed at:", address(escrowHook));

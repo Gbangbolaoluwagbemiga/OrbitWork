@@ -102,9 +102,9 @@ contract RobustSwapper {
 
 contract SwapScript is Script {
     IPoolManager constant MANAGER = IPoolManager(0x00B036B58a818B1BC34d502D3fE730Db729e62AC);
-    address constant USDC = 0xA657eCf4120a91FFB6CD67168C98133BcB7a6098; 
-    address constant HOOK = 0x99D6b6F5b42b0220EB265026828c79d47e774a40;
-    address constant ORBIT_WORK = 0x2aA6Dbc1Ac1AD4eE06b84fcc107DE18329BbcdfE;
+    address constant USDC = 0x8B9A4AE0297FA4b1fA2B6fBe9007F07a8978b1ee; 
+    address constant HOOK = 0xdC524fa00C57f2914036be24746A6aC4432Fca40;
+    address constant ORBIT_WORK = 0x2B77b47cE1634818d038EB4dC29A4962B25881B3;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
