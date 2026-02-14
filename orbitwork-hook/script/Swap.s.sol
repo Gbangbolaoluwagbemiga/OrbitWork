@@ -11,6 +11,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 import {OrbitWork} from "../src/core/OrbitWork.sol";
+import {MockERC20} from "../src/core/MockERC20.sol";
 
 contract RobustSwapper {
     IPoolManager manager;
@@ -125,6 +126,14 @@ contract SwapScript is Script {
 
         // 2. Deploy Swapper
         RobustSwapper swapper = new RobustSwapper(MANAGER);
+        
+        // Ensure we have USDC to swap
+        try MockERC20(USDC).mint(deployer, 1000 * 1e18) {
+            console.log("Minted MockUSDC via token");
+        } catch {
+            console.log("Minting failed - assuming enough balance or wrong token type");
+        }
+
         IERC20(USDC).approve(address(swapper), type(uint256).max);
         
         // 3. Swap
