@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {BaseHook} from "@openzeppelin/uniswap-hooks/src/base/BaseHook.sol";
+import {BaseHook} from "@uniswap/v4-periphery/src/utils/BaseHook.sol";
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import {IUnlockCallback} from "@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
@@ -33,6 +34,8 @@ contract EscrowHook is BaseHook, IUnlockCallback {
     using CurrencyLibrary for Currency;
     using SafeERC20 for IERC20;
     using StateLibrary for IPoolManager;
+
+    uint256 public constant VERSION = 5;
 
     address public immutable escrowCore;
 
@@ -433,27 +436,25 @@ contract EscrowHook is BaseHook, IUnlockCallback {
         BalanceDelta,
         bytes calldata
     ) external override onlyPoolManager returns (bytes4, int128) {
-        // Override BaseHook.afterSwap to bypass validateHookPermissions check
-        // The PoolManager already ensures that this function is only called 
-        // if the hook address has the correct flags.
-        
-        return (BaseHook.afterSwap.selector, 0);
+        return (IHooks.afterSwap.selector, 0);
     }
 
-    function _beforeAddLiquidity(address, PoolKey calldata, IPoolManager.ModifyLiquidityParams calldata, bytes calldata)
-        internal
-        override
-        returns (bytes4)
-    {
-        return BaseHook.beforeAddLiquidity.selector;
+    function beforeAddLiquidity(
+        address,
+        PoolKey calldata,
+        IPoolManager.ModifyLiquidityParams calldata,
+        bytes calldata
+    ) external override onlyPoolManager returns (bytes4) {
+        return IHooks.beforeAddLiquidity.selector;
     }
 
-    function _beforeRemoveLiquidity(address, PoolKey calldata, IPoolManager.ModifyLiquidityParams calldata, bytes calldata)
-        internal
-        override
-        returns (bytes4)
-    {
-        return BaseHook.beforeRemoveLiquidity.selector;
+    function beforeRemoveLiquidity(
+        address,
+        PoolKey calldata,
+        IPoolManager.ModifyLiquidityParams calldata,
+        bytes calldata
+    ) external override onlyPoolManager returns (bytes4) {
+        return IHooks.beforeRemoveLiquidity.selector;
     }
 
     // Allow receiving native tokens for settlement
