@@ -1046,7 +1046,8 @@ export default function AdminPage() {
         return;
       }
 
-      await contract.send("whitelistToken", "no-value", tokenAddress);
+      const checksummedAddress = ethers.getAddress(tokenAddress);
+      await contract.send("whitelistToken", "no-value", checksummedAddress);
 
       // Add to known whitelisted tokens
       const normalizedTokenAddress = tokenAddress.toLowerCase();
@@ -1146,7 +1147,8 @@ export default function AdminPage() {
         return;
       }
 
-      await contract.send("authorizeArbiter", "no-value", arbiterAddress);
+      const checksummedAddress = ethers.getAddress(arbiterAddress);
+      await contract.send("authorizeArbiter", "no-value", checksummedAddress);
 
       // Add to known authorized arbiters
       const normalizedArbiterAddress = arbiterAddress.toLowerCase();

@@ -3,6 +3,7 @@
 // Force dynamic rendering to prevent SSR issues with AppKit
 export const dynamic = "force-dynamic";
 
+import { ethers } from "ethers";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useWeb3 } from "@/contexts/web3-context";
@@ -40,6 +41,7 @@ export default function CreateEscrowPage() {
   const [whitelistedTokens, setWhitelistedTokens] = useState<
     { address: string; name?: string; symbol?: string }[]
   >([]);
+  const [platformFeeBP, setPlatformFeeBP] = useState<number>(0);
   // Cache token metadata to avoid refetching on re-renders
   const tokenMetadataCache = useRef<
     Map<string, { name: string; symbol: string }>
@@ -100,6 +102,12 @@ export default function CreateEscrowPage() {
       }
 
       setIsContractPaused(isPaused);
+
+      // Fetch platform fee BP
+      const feeBP = await contract.call("platformFeeBP");
+      if (feeBP !== null && feeBP !== undefined) {
+        setPlatformFeeBP(Number(feeBP.toString()));
+      }
     } catch (error) {
       setIsContractPaused(false);
     }
@@ -846,11 +854,11 @@ export default function CreateEscrowPage() {
         ZERO_ADDRESS: ZERO_ADDRESS,
       });
 
+      let tokenDecimals = 18; // Shared variable for decimal scaling
       if (!isNativeToken) {
         const tokenContract = getContract(formData.token, ERC20_ABI);
 
         // Test if token contract is working and get decimals
-        let tokenDecimals = 18; // Default to 18
         let tokenSymbol = "TOKEN"; // Default symbol for error messages
         try {
           const tokenName = await tokenContract.call("name");
@@ -1062,20 +1070,27 @@ export default function CreateEscrowPage() {
         }
 
         try {
+          // Calculate total amount with platform fee (BP / 10000)
+          const feeAmount = (BigInt(totalAmountInWei) * BigInt(platformFeeBP)) / BigInt(10000);
+          const totalAmountWithFee = BigInt(totalAmountInWei) + feeAmount;
+
           console.log('💰 Approving tokens:', {
             escrowContract: CONTRACTS.ORBIT_WORK_ESCROW,
-            amount: totalAmountInWei,
-            amountFormatted: `${(Number(BigInt(totalAmountInWei)) / Number(BigInt(10 ** tokenDecimals))).toFixed(4)} ${tokenSymbol}`
+            budget: totalAmountInWei,
+            fee: feeAmount.toString(),
+            totalWithFee: totalAmountWithFee.toString(),
+            platformFeeBP: platformFeeBP,
+            amountFormatted: `${(Number(totalAmountWithFee) / 10 ** tokenDecimals).toFixed(4)} ${tokenSymbol}`
           });
 
-          // Approve 1% extra to handle any rounding issues
-          const approvalAmount = (BigInt(totalAmountInWei) * BigInt(101) / BigInt(100)).toString();
-          console.log('📝 Approval amount (with buffer):', approvalAmount);
+          // Add a tiny buffer (0.1%) for rounding safety during contract transferFrom
+          const approvalAmount = (totalAmountWithFee * BigInt(1001) / BigInt(1000)).toString();
+          console.log('📝 Approval amount (with safety buffer):', approvalAmount);
 
           const approvalTx = await tokenContract.send(
             "approve",
             "no-value", // No native value for ERC20 approval
-            CONTRACTS.ORBIT_WORK_ESCROW,
+            ethers.getAddress(CONTRACTS.ORBIT_WORK_ESCROW),
             approvalAmount  // Approve slightly more than needed
           );
 
@@ -1152,9 +1167,13 @@ export default function CreateEscrowPage() {
       if (isNativeToken) {
         // Use createEscrowNative for native tokens
         console.log("Creating native token escrow (no whitelist check needed)");
-        const totalAmountInWei = BigInt(
+        const budgetInWei = BigInt(
           Math.floor(Number.parseFloat(formData.totalBudget) * 10 ** 18)
-        ).toString();
+        );
+        const feeInWei = (budgetInWei * BigInt(platformFeeBP)) / BigInt(10000);
+        const totalWithFeeInWei = budgetInWei + feeInWei;
+        const totalAmountInWei = totalWithFeeInWei.toString();
+        const budgetAmountInWei = budgetInWei.toString();
 
         // Check native token balance with multiple methods
         let balanceInWei: bigint | null = null;
@@ -1241,17 +1260,19 @@ export default function CreateEscrowPage() {
           balanceSource,
           rawBalance: balanceInWei.toString(),
           balanceFormatted: balanceFormatted.toFixed(4),
-          requiredAmount: requiredAmount.toString(),
+          budgetAmount: budgetAmountInWei,
+          feeAmount: feeInWei.toString(),
+          requiredAmount: totalWithFeeInWei.toString(),
           requiredFormatted: requiredFormatted.toFixed(4),
         });
 
-        if (balanceInWei < requiredAmount) {
+        if (balanceInWei < totalWithFeeInWei) {
           throw new Error(
             `Insufficient ${nativeSymbol} balance. You have ${balanceFormatted.toFixed(
               4
             )} ${nativeSymbol} but need ${requiredFormatted.toFixed(
               4
-            )} ${nativeSymbol}.`
+            )} ${nativeSymbol} (Budget: ${(Number(budgetInWei) / 1e18).toFixed(4)} + Fee: ${(Number(feeInWei) / 1e18).toFixed(4)}).`
           );
         }
 
@@ -1275,7 +1296,7 @@ export default function CreateEscrowPage() {
           try {
             gasEstimate = await escrowContract.estimateGas(
               "createEscrowNative",
-              totalAmountInWei, // msg.value in wei
+              totalAmountInWei, // totalWithFee in wei as msg.value
               beneficiaryAddress,
               arbiters,
               requiredConfirmations,
@@ -1324,7 +1345,7 @@ export default function CreateEscrowPage() {
               txHash = await executeTransaction(
                 CONTRACTS.ORBIT_WORK_ESCROW,
                 data,
-                (Number(totalAmountInWei) / 1e18).toString() // Convert wei to native token for value
+                (Number(totalWithFeeInWei) / 1e18).toString() // Convert wei to native token for value
               );
 
               toast({
@@ -1336,7 +1357,7 @@ export default function CreateEscrowPage() {
               // Use regular transaction
               txHash = await escrowContract.send(
                 "createEscrowNative",
-                `0x${BigInt(totalAmountInWei).toString(16)}`, // Convert wei to hex for msg.value
+                `0x${totalWithFeeInWei.toString(16)}`, // Convert totalWithFee to hex for msg.value
                 beneficiaryAddress, // beneficiary parameter
                 arbiters, // arbiters parameter
                 requiredConfirmations, // requiredConfirmations parameter
@@ -1375,7 +1396,7 @@ export default function CreateEscrowPage() {
 
         // Convert milestone amounts to wei for ERC20 tokens
         const milestoneAmountsInWei = formData.milestones.map((m) =>
-          BigInt(Math.floor(Number.parseFloat(m.amount) * 10 ** 18)).toString()
+          BigInt(Math.floor(Number.parseFloat(m.amount) * 10 ** tokenDecimals)).toString()
         );
 
         // Convert duration from days to seconds

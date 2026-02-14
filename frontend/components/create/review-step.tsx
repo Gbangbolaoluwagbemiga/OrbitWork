@@ -26,6 +26,7 @@ interface ReviewStepProps {
   isSubmitting: boolean;
   isContractPaused: boolean;
   isOnCorrectNetwork?: boolean;
+  platformFeeBP?: number;
 }
 
 export function ReviewStep({
@@ -34,6 +35,7 @@ export function ReviewStep({
   isSubmitting,
   isContractPaused,
   isOnCorrectNetwork = true,
+  platformFeeBP = 0,
 }: ReviewStepProps) {
   const { isSmartAccountReady } = useSmartAccount();
   const totalMilestoneAmount = formData.milestones.reduce(
@@ -44,6 +46,10 @@ export function ReviewStep({
   const isTotalValid =
     Math.abs(totalMilestoneAmount - Number.parseFloat(formData.totalBudget)) <
     0.01;
+
+  const feePercentage = platformFeeBP / 100;
+  const platformFeeAmount = (Number.parseFloat(formData.totalBudget) * platformFeeBP) / 10000;
+  const totalWithFee = Number.parseFloat(formData.totalBudget) + platformFeeAmount;
 
   return (
     <Card className="glass border-primary/20 p-6">
@@ -117,6 +123,22 @@ export function ReviewStep({
                 {formData.totalBudget} tokens
               </span>
             </div>
+            {platformFeeBP > 0 && (
+              <>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span className="text-sm">Platform Fee ({feePercentage}%):</span>
+                  <span className="text-sm font-medium">
+                    + {platformFeeAmount.toFixed(2)} tokens
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-t mt-2 pt-2 text-primary">
+                  <span className="font-bold">Total to Pay:</span>
+                  <span className="font-bold">
+                    {totalWithFee.toFixed(2)} tokens
+                  </span>
+                </div>
+              </>
+            )}
             {!isTotalValid && (
               <p className="text-sm text-destructive mt-2">
                 ⚠️ Milestone amounts don't match project budget

@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import { UNICHAIN_SEPOLIA, DEFAULT_NETWORK, CONTRACTS } from "@/lib/web3/config";
@@ -41,10 +42,19 @@ export function Web3Provider({ children }: { children: ReactNode }) {
   const { chainId: appKitChainId } = useAppKitNetwork();
   const [wallet, setWallet] = useState<WalletState>({
     address: null,
-    chainId: null,
     isConnected: false,
+    chainId: null,
     balance: "0",
   });
+
+  // Use a ref to keep track of the latest wallet state for closures
+  const walletRef = useRef<WalletState>(wallet);
+
+  // Keep walletRef in sync with state
+  useEffect(() => {
+    walletRef.current = wallet;
+  }, [wallet]);
+
   const [isOwner, setIsOwner] = useState(false);
   const [isSwitchingNetwork, setIsSwitchingNetwork] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -765,8 +775,8 @@ export function Web3Provider({ children }: { children: ReactNode }) {
                 method: "eth_estimateGas",
                 params: [
                   {
-                    from: wallet.address,
-                    to: targetAddress,
+                    from: walletRef.current.address ? ethers.getAddress(walletRef.current.address) : null,
+                    to: ethers.getAddress(targetAddress),
                     data,
                     value:
                       value !== "0x0" && value !== "no-value" ? value : "0x0",
@@ -796,9 +806,16 @@ export function Web3Provider({ children }: { children: ReactNode }) {
             }
           }
 
+          const checksummedFrom = walletRef.current.address ? ethers.getAddress(walletRef.current.address) : null;
+          const checksummedTo = ethers.getAddress(targetAddress);
+
+          if (!checksummedFrom) {
+            throw new Error("Wallet not connected! Please connect your wallet to send transactions.");
+          }
+
           const txParams: any = {
-            from: wallet.address,
-            to: targetAddress,
+            from: checksummedFrom,
+            to: checksummedTo,
             data,
             gas: gasLimit,
           };
@@ -821,7 +838,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
         return "0x3be7fbbdbc73fc4731d60ef09c4ba1a94dc58e41";
       },
     };
-  }, []);
+  }, [wallet.address]);
 
   const encodeFunction = (abi: any, method: string, args: any[]) => {
     try {
