@@ -23,8 +23,8 @@ contract DeployAll is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // 1. Deploy OrbitWork (EscrowCore)
-        // Args: _monadToken (0x0 for native), _feeCollector, _platformFeeBP (300 = 3%)
-        OrbitWork orbitWork = new OrbitWork(address(0), deployer, 300);
+        // Args: _monadToken (0x0 for native), _feeCollector, _platformFeeBP (0 = 0%)
+        OrbitWork orbitWork = new OrbitWork(address(0), deployer, 0);
         console.log("OrbitWork deployed at:", address(orbitWork));
 
         // 2. Mine Hook Salt with correct flags

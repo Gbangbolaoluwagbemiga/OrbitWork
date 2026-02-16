@@ -48,10 +48,10 @@ export function YieldTracker({ escrowId, totalAmount, tokenSymbol, daysActive, t
                     try {
                         // Use getEscrowYield (view function) - pass args directly, not as array
                         const yieldResult = await hookContract.call("getEscrowYield", escrowId);
-                        console.log("Yield Result (Raw):", yieldResult);
+                        console.log(`[Escrow ${escrowId}] Yield Result (Raw):`, yieldResult);
                         // Hook now normalizes all yield to 18 decimals for high precision
                         currentYield = Number(ethers.formatUnits(yieldResult, 18));
-                        console.log("Yield Result (Formatted):", currentYield);
+                        console.log(`[Escrow ${escrowId}] Yield Result (Formatted):`, currentYield);
                         isActive = true;
                     } catch (e) {
                         console.error("Failed to fetch yield data:", e);
@@ -91,8 +91,8 @@ export function YieldTracker({ escrowId, totalAmount, tokenSymbol, daysActive, t
         return null;
     }
 
-    const freelancerYield = yieldData.yieldAccumulated * 0.7;
-    const platformYield = yieldData.yieldAccumulated * 0.3;
+    const freelancerYield = yieldData.yieldAccumulated * 0.6;
+    const platformYield = yieldData.yieldAccumulated * 0.4;
 
     return (
         <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent transition-all duration-300">
@@ -159,12 +159,12 @@ export function YieldTracker({ escrowId, totalAmount, tokenSymbol, daysActive, t
                             <div className="flex items-center justify-between text-xs">
                                 <span className="flex items-center gap-1">
                                     <Coins className="h-3 w-3" />
-                                    Freelancer (70%)
+                                    Freelancer (60%)
                                 </span>
                                 <span className="font-semibold">+${freelancerYield.toFixed(6)} ${tokenSymbol}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                <span>Platform (30%)</span>
+                                <span>Platform (40%)</span>
                                 <span>${platformYield.toFixed(6)} ${tokenSymbol}</span>
                             </div>
                         </div>
