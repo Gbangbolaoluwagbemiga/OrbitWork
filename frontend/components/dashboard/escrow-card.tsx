@@ -273,7 +273,7 @@ export function EscrowCard({
                   </div>
                 )}
 
-                Productive Escrow: Yield Tracker
+                {/* Productive Escrow: Yield Tracker */}
                 {/* Show to both parties for visibility of productive capital */}
                 {escrow.status !== "completed" && (
                   <YieldTracker
